@@ -11,7 +11,6 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           {/* 로고 */}
           <Link href="/" className="flex items-center">
-            3
             <img
               src="/logo_w.png"
               alt="비트스포 로고"
