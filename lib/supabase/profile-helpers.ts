@@ -107,7 +107,7 @@ export async function getAllProfiles(): Promise<Profile[]> {
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, name, avatar_url, created_at")
+    .select("id, name, avatar_url, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) {
