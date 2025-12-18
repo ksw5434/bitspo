@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/app/_components/ui/button";
@@ -19,7 +19,14 @@ export const dynamic = "force-dynamic";
 
 export default function SignupPage() {
   const router = useRouter();
-  const supabase = createClient();
+  // 브라우저에서만 Supabase 클라이언트 생성 (빌드 타임 에러 방지)
+  const supabase = useMemo(() => {
+    // 브라우저에서만 실행되도록 체크
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return createClient();
+  }, []);
 
   // 폼 상태 관리
   const [name, setName] = useState("");
@@ -87,6 +94,12 @@ export default function SignupPage() {
       return;
     }
 
+    // Supabase 클라이언트가 없으면 에러
+    if (!supabase) {
+      setErrorMessage("Supabase 클라이언트를 초기화할 수 없습니다.");
+      return;
+    }
+
     // Supabase 회원가입 처리
     setIsLoading(true);
     try {
@@ -145,6 +158,11 @@ export default function SignupPage() {
 
   // 카카오톡 로그인 처리
   const handleKakaoLogin = async () => {
+    if (!supabase) {
+      setErrorMessage("Supabase 클라이언트를 초기화할 수 없습니다.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -169,6 +187,11 @@ export default function SignupPage() {
 
   // 구글 로그인 처리
   const handleGoogleLogin = async () => {
+    if (!supabase) {
+      setErrorMessage("Supabase 클라이언트를 초기화할 수 없습니다.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
