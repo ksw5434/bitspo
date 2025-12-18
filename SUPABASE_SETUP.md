@@ -55,37 +55,46 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 **참고**: Supabase는 카카오 로그인을 공식적으로 지원하지 않을 수 있습니다. 이 경우 커스텀 OAuth 프로바이더를 설정해야 합니다.
 
-## 5. 데이터베이스 스키마 설정 (선택사항)
+## 5. 데이터베이스 스키마 설정
 
-사용자 프로필 정보를 저장하려면 데이터베이스 테이블을 생성할 수 있습니다:
+사용자 프로필 정보(이름, 아바타 URL)를 저장하기 위한 테이블을 생성합니다.
+
+### 스키마 파일 실행 방법
+
+1. Supabase 대시보드에서 **SQL Editor**로 이동합니다.
+2. `lib/supabase/schema.sql` 파일의 내용을 복사하여 SQL Editor에 붙여넣습니다.
+3. **Run** 버튼을 클릭하여 실행합니다.
+
+### 스키마 구성
+
+스키마 파일(`lib/supabase/schema.sql`)에는 다음이 포함되어 있습니다:
+
+- **profiles 테이블**: 사용자 이름과 아바타 URL 저장
+- **RLS 정책**: 보안을 위한 Row Level Security 설정
+- **자동 트리거**:
+  - 새 사용자 생성 시 자동으로 프로필 생성
+  - 프로필 업데이트 시 `updated_at` 자동 갱신
+- **유틸리티 함수**: 기존 사용자 프로필 생성 함수
+
+### 주요 기능
+
+- 사용자 생성 시 자동으로 프로필 생성
+- 자신의 프로필만 수정 가능 (RLS 정책)
+- 모든 사용자의 공개 프로필 조회 가능
+- 업데이트 시간 자동 관리
+
+### 기존 사용자 프로필 생성
+
+이미 가입한 사용자가 있다면, 다음 함수를 실행하여 프로필을 생성할 수 있습니다:
 
 ```sql
--- 사용자 프로필 테이블 생성
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  name TEXT,
-  email TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- RLS (Row Level Security) 정책 설정
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
--- 사용자는 자신의 프로필만 볼 수 있음
-CREATE POLICY "Users can view own profile"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
-
--- 사용자는 자신의 프로필만 업데이트할 수 있음
-CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+SELECT public.create_profiles_for_existing_users();
 ```
 
 ## 6. 테스트
 
 1. 개발 서버를 실행합니다:
+
    ```bash
    npm run dev
    ```
@@ -126,4 +135,3 @@ CREATE POLICY "Users can update own profile"
 - [Supabase 공식 문서](https://supabase.com/docs)
 - [Supabase Auth 문서](https://supabase.com/docs/guides/auth)
 - [Next.js + Supabase 가이드](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
-
