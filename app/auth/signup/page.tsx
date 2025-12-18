@@ -14,6 +14,9 @@ import {
 } from "@/app/_components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
+// 회원가입 페이지는 동적으로 렌더링 (prerender 방지)
+export const dynamic = "force-dynamic";
+
 export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
