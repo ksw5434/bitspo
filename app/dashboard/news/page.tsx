@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
 import { Card, CardContent } from "@/app/_components/ui/card";
 import { Input } from "@/app/_components/ui/input";
-import { Textarea } from "@/app/_components/ui/textarea";
-import { Newspaper, Plus, Edit2, Trash2, X } from "lucide-react";
+import {
+  RichTextEditor,
+  RichTextEditorRef,
+} from "@/app/_components/rich-text-editor";
+import {
+  Newspaper,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  Image as ImageIcon,
+} from "lucide-react";
 
 /**
  * 뉴스 타입 정의
@@ -37,6 +47,8 @@ export default function DashboardNewsPage() {
     content: "",
     image_url: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const editorRef = useRef<RichTextEditorRef>(null);
 
   // Supabase 클라이언트 생성
   const supabase = createClient();
@@ -87,14 +99,19 @@ export default function DashboardNewsPage() {
   // 뉴스 목록 로드
   const loadNews = async () => {
     try {
-      const response = await fetch("/dashboard/news/api");
-      const result = await response.json();
+      // Supabase에서 직접 뉴스 목록 조회 (최신순)
+      const { data: newsData, error: newsError } = await supabase
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      if (response.ok) {
-        setNewsList(result.data || []);
-      } else {
-        alert(result.error || "뉴스를 불러오는데 실패했습니다.");
+      if (newsError) {
+        console.error("뉴스 로드 오류:", newsError);
+        alert("뉴스를 불러오는데 실패했습니다.");
+        return;
       }
+
+      setNewsList(newsData || []);
     } catch (error) {
       console.error("뉴스 로드 오류:", error);
       alert("뉴스를 불러오는데 실패했습니다.");
@@ -108,6 +125,7 @@ export default function DashboardNewsPage() {
       content: "",
       image_url: "",
     });
+    setImagePreview(null);
     setEditingNews(null);
     setShowForm(false);
   };
@@ -156,11 +174,18 @@ export default function DashboardNewsPage() {
   // 뉴스 수정 시작
   const handleEdit = (news: News) => {
     setEditingNews(news);
+    const imageUrl = news.image_url || "";
     setFormData({
       headline: news.headline,
       content: news.content || "",
-      image_url: news.image_url || "",
+      image_url: imageUrl,
     });
+    // 이미지 URL이 있으면 미리보기 설정
+    if (imageUrl && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(imageUrl)) {
+      setImagePreview(imageUrl);
+    } else {
+      setImagePreview(null);
+    }
     setShowForm(true);
   };
 
@@ -199,6 +224,13 @@ export default function DashboardNewsPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // HTML 태그 제거 및 텍스트만 추출 (목록 미리보기용)
+  const stripHtmlTags = (html: string | null): string => {
+    if (!html) return "";
+    // 간단한 HTML 태그 제거
+    return html.replace(/<[^>]*>/g, "").trim();
   };
 
   if (isLoading) {
@@ -267,14 +299,14 @@ export default function DashboardNewsPage() {
                 >
                   내용
                 </label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
+                <RichTextEditor
+                  ref={editorRef}
+                  content={formData.content}
+                  onChange={(html) =>
+                    setFormData({ ...formData, content: html })
                   }
-                  placeholder="뉴스 내용을 입력하세요"
-                  rows={6}
+                  placeholder="뉴스 내용을 입력하세요..."
+                  editable={true}
                 />
               </div>
               <div>
@@ -284,15 +316,57 @@ export default function DashboardNewsPage() {
                 >
                   이미지 URL
                 </label>
-                <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, image_url: e.target.value })
-                  }
-                  placeholder="https://example.com/image.jpg"
-                />
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="image_url"
+                      type="url"
+                      value={formData.image_url}
+                      onChange={(e) => {
+                        const url = e.target.value;
+                        setFormData({ ...formData, image_url: url });
+                        // URL이 유효한 이미지 URL인지 확인하여 미리보기 표시
+                        if (
+                          url &&
+                          /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)
+                        ) {
+                          setImagePreview(url);
+                        } else {
+                          setImagePreview(null);
+                        }
+                      }}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (formData.image_url && editorRef.current) {
+                          editorRef.current.insertImage(formData.image_url);
+                        }
+                      }}
+                      disabled={!formData.image_url}
+                      title="에디터에 이미지 삽입"
+                    >
+                      <ImageIcon className="w-4 h-4 mr-1" />
+                      에디터에 삽입
+                    </Button>
+                  </div>
+                  {/* 이미지 미리보기 */}
+                  {imagePreview && (
+                    <div className="border rounded-lg p-2 bg-muted/50">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        미리보기:
+                      </p>
+                      <img
+                        src={imagePreview}
+                        alt="미리보기"
+                        className="max-w-full h-auto max-h-48 rounded border"
+                        onError={() => setImagePreview(null)}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button type="submit">
@@ -312,12 +386,21 @@ export default function DashboardNewsPage() {
         {newsList.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">작성된 뉴스가 없습니다.</p>
+              <p className="text-muted-foreground mb-4">게시글이 없음</p>
+              {!showForm && (
+                <Button onClick={() => setShowForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
           newsList.map((news) => (
-            <Card key={news.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={news.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => router.push(`/dashboard/news/${news.id}`)}
+            >
               <CardContent className="p-6">
                 <div className="flex gap-4">
                   {/* 이미지 */}
@@ -341,7 +424,7 @@ export default function DashboardNewsPage() {
                     </h3>
                     {news.content && (
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                        {news.content}
+                        {stripHtmlTags(news.content)}
                       </p>
                     )}
                     <div className="flex items-center justify-between">
@@ -353,11 +436,17 @@ export default function DashboardNewsPage() {
                           </span>
                         )}
                       </p>
-                      <div className="flex gap-2">
+                      <div
+                        className="flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEdit(news)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(news);
+                          }}
                         >
                           <Edit2 className="w-4 h-4 mr-1" />
                           수정
@@ -365,7 +454,10 @@ export default function DashboardNewsPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => handleDelete(news.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(news.id);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
                           삭제

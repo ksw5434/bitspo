@@ -77,6 +77,9 @@ export default function Header() {
       return;
     }
 
+    // 초기 로딩 완료 여부 추적 (중복 호출 방지)
+    let hasInitialized = false;
+
     // 프로필 정보 가져오기 함수 (재사용)
     const fetchUserProfile = async (userId: string) => {
       try {
@@ -97,24 +100,7 @@ export default function Header() {
       }
     };
 
-    // 인증 상태 변경 리스너 설정 (초기 세션도 자동으로 처리됨)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // 초기 세션이거나 인증 상태가 변경된 경우
-      if (session?.user) {
-        setUser(session.user);
-        // 프로필 정보 가져오기
-        await fetchUserProfile(session.user.id);
-      } else {
-        setUser(null);
-        setUserProfile(null);
-      }
-      // 로딩 완료 처리 (초기 세션 확인 완료 또는 상태 변경 완료)
-      setIsLoading(false);
-    });
-
-    // 초기 사용자 상태 확인 (리스너가 초기 세션을 처리하지 않는 경우를 대비)
+    // 초기 사용자 상태 확인 (먼저 실행하여 빠른 로딩)
     const checkUser = async () => {
       try {
         const {
@@ -135,9 +121,30 @@ export default function Header() {
         setUserProfile(null);
       } finally {
         // 초기 확인 완료 후 로딩 상태 해제
+        hasInitialized = true;
         setIsLoading(false);
       }
     };
+
+    // 인증 상태 변경 리스너 설정 (이후 상태 변경만 처리)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // 초기 로딩이 완료된 후에만 상태 변경 처리
+      if (!hasInitialized) {
+        return;
+      }
+
+      // 인증 상태가 변경된 경우
+      if (session?.user) {
+        setUser(session.user);
+        // 프로필 정보 가져오기
+        await fetchUserProfile(session.user.id);
+      } else {
+        setUser(null);
+        setUserProfile(null);
+      }
+    });
 
     // 초기 사용자 확인 실행
     checkUser();
@@ -255,17 +262,19 @@ export default function Header() {
 
                   {/* 사용자 프로필 Avatar */}
                   <Avatar className="w-6 h-6">
-                    {/* 로그인 상태이고 avatar_url이 있을 때만 이미지 표시 */}
-                    {mounted && user && userProfile?.avatar_url ? (
-                      <AvatarImage
-                        src={userProfile.avatar_url}
-                        alt={
-                          userProfile?.name ? userProfile.name : "사용자 프로필"
-                        }
-                      />
-                    ) : null}
+                    <AvatarImage
+                      src={
+                        mounted && userProfile?.avatar_url
+                          ? userProfile.avatar_url
+                          : ""
+                      }
+                      alt={
+                        mounted && userProfile?.name
+                          ? userProfile.name
+                          : "사용자 프로필"
+                      }
+                    />
                     <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                      {/* 로그인 상태일 때만 이니셜 표시, 로그아웃 상태일 때는 UserIcon 표시 */}
                       {mounted && user ? (
                         getUserInitials() || <UserIcon className="w-4 h-4" />
                       ) : (

@@ -2,15 +2,87 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
+ * 뉴스 개별 조회 (GET)
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = await createClient();
+    const { id } = await params;
+    const newsId = id;
+
+    // 현재 사용자 확인
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (!user || authError) {
+      return NextResponse.json(
+        { error: "인증이 필요합니다." },
+        { status: 401 }
+      );
+    }
+
+    // 관리자 권한 확인
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.is_admin) {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
+
+    // 뉴스 조회
+    const { data: news, error } = await supabase
+      .from("news")
+      .select("*")
+      .eq("id", newsId)
+      .single();
+
+    if (error) {
+      console.error("뉴스 조회 오류:", error);
+      return NextResponse.json(
+        { error: "뉴스를 불러오는데 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!news) {
+      return NextResponse.json(
+        { error: "뉴스를 찾을 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data: news });
+  } catch (error) {
+    console.error("뉴스 조회 중 예외 발생:", error);
+    return NextResponse.json(
+      { error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * 뉴스 수정 (PUT)
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const newsId = params.id;
+    const { id } = await params;
+    const newsId = id;
 
     // 현재 사용자 확인
     const {
@@ -94,11 +166,12 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const newsId = params.id;
+    const { id } = await params;
+    const newsId = id;
 
     // 현재 사용자 확인
     const {
@@ -147,4 +220,3 @@ export async function DELETE(
     );
   }
 }
-
