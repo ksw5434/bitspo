@@ -1,5 +1,6 @@
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import { NewsImage } from "@/app/dashboard/news/news-image";
 
 // 랭킹 뉴스 아이템 타입 정의
 interface RankingNewsItem {
@@ -40,17 +41,7 @@ export function NewsSection({ newsItems }: NewsSectionProps) {
                 </div>
                 {/* 이미지 */}
                 <div className="size-16">
-                  <img
-                    src={news.image}
-                    alt={news.headline}
-                    className="w-full aspect-square object-cover rounded"
-                    loading="lazy"
-                    onError={(e) => {
-                      // 이미지 로드 실패 시 대체 이미지로 변경
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
-                    }}
-                  />
+                  <NewsImage src={news.image} alt={news.headline} />
                 </div>
               </div>
             </CardContent>

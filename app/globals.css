@@ -119,6 +119,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* 스크롤바 너비를 고정하여 레이아웃 이동 방지
+       스크롤바가 없을 때도 공간을 예약하여 레이아웃 시프트 방지 */
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
   }
