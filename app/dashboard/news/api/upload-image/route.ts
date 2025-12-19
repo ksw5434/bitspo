@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
     const fileName = `${user.id}/${timestamp}-${randomString}.${fileExt}`;
 
     // Supabase Storage에 업로드
-    // Storage 버킷 이름: 'news-images' (Supabase 대시보드에서 생성 필요)
+    // Storage 버킷 이름: 'news-image' (Supabase 대시보드에서 생성 필요)
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("news-images")
+      .from("news-image")
       .upload(fileName, file, {
         cacheControl: "3600",
         upsert: false,
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "Storage 버킷이 존재하지 않습니다. Supabase 대시보드에서 'news-images' 버킷을 생성해주세요.",
+              "Storage 버킷이 존재하지 않습니다. Supabase 대시보드에서 'news-image' 버킷을 생성해주세요.",
           },
           { status: 500 }
         );
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     // 공개 URL 생성
     const {
       data: { publicUrl },
-    } = supabase.storage.from("news-images").getPublicUrl(uploadData.path);
+    } = supabase.storage.from("news-image").getPublicUrl(uploadData.path);
 
     if (!publicUrl) {
       return NextResponse.json(

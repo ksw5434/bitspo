@@ -54,8 +54,15 @@ export const RichTextEditor = forwardRef<
   },
   ref
 ) {
+  // 클라이언트 마운트 상태 (Hydration 에러 방지)
+  const [isMounted, setIsMounted] = useState(false);
   // 이미지 업로드 로딩 상태
   const [isUploading, setIsUploading] = useState(false);
+
+  // 클라이언트에서만 마운트되도록 설정
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 이미지 업로드 함수
   const handleImageUpload = useCallback(async (file: File) => {
@@ -91,9 +98,10 @@ export const RichTextEditor = forwardRef<
     }
   }, []);
 
-  // 에디터 인스턴스 생성
+  // 에디터 인스턴스 생성 (클라이언트에서만 초기화)
   const editor = useEditor({
-    immediatelyRender: false, // SSR hydration 불일치 방지
+    // 클라이언트에서만 에디터 생성
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         // 기본 기능 활성화
@@ -119,8 +127,8 @@ export const RichTextEditor = forwardRef<
         placeholder,
       }),
     ],
-    content: content || "",
-    editable,
+    content: isMounted ? content || "" : "",
+    editable: isMounted ? editable : false,
     onUpdate: ({ editor }) => {
       // HTML로 변환하여 부모 컴포넌트에 전달
       const html = editor.getHTML();
@@ -170,16 +178,19 @@ export const RichTextEditor = forwardRef<
     },
   });
 
-  // content prop이 변경될 때 에디터 내용 업데이트
+  // 에디터가 마운트되면 활성화 및 내용 설정
   useEffect(() => {
-    if (editor && content !== undefined) {
-      const currentContent = editor.getHTML();
-      // 내용이 실제로 변경된 경우에만 업데이트 (무한 루프 방지)
-      if (currentContent !== content) {
-        editor.commands.setContent(content);
+    if (isMounted && editor) {
+      editor.setEditable(editable);
+      if (content !== undefined) {
+        const currentContent = editor.getHTML();
+        // 내용이 실제로 변경된 경우에만 업데이트 (무한 루프 방지)
+        if (currentContent !== content) {
+          editor.commands.setContent(content || "");
+        }
       }
     }
-  }, [content, editor]);
+  }, [isMounted, editor, editable, content]);
 
   // ref를 통해 부모 컴포넌트에서 에디터 메서드에 접근할 수 있도록 노출
   useImperativeHandle(ref, () => ({
@@ -237,8 +248,38 @@ export const RichTextEditor = forwardRef<
     }
   }, [editor]);
 
-  if (!editor) {
-    return <div className="border rounded-lg p-4">에디터를 로딩하는 중...</div>;
+  // 서버 사이드 렌더링 시 동일한 구조를 렌더링하여 Hydration 에러 방지
+  if (!isMounted || !editor) {
+    return (
+      <div className="border rounded-lg overflow-hidden relative">
+        {/* 툴바 (서버와 클라이언트에서 동일한 구조) */}
+        {editable && (
+          <div className="border-b p-2 flex flex-wrap gap-1 bg-muted/50">
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-px h-6 bg-border mx-1" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-px h-6 bg-border mx-1" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-px h-6 bg-border mx-1" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+            <div className="w-px h-6 bg-border mx-1" />
+            <div className="w-9 h-9" />
+            <div className="w-9 h-9" />
+          </div>
+        )}
+        {/* 에디터 영역 */}
+        <div className="relative p-4 min-h-[300px] prose prose-sm max-w-none">
+          <div className="text-muted-foreground">{placeholder}</div>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
 import { Card, CardContent } from "@/app/_components/ui/card";
@@ -10,14 +10,7 @@ import {
   RichTextEditor,
   RichTextEditorRef,
 } from "@/app/_components/rich-text-editor";
-import {
-  Newspaper,
-  Plus,
-  Edit2,
-  Trash2,
-  X,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Newspaper, Plus, X, Image as ImageIcon } from "lucide-react";
 
 /**
  * 뉴스 타입 정의
@@ -37,6 +30,7 @@ interface News {
  */
 export default function DashboardNewsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -48,6 +42,8 @@ export default function DashboardNewsPage() {
     image_url: "",
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const editorRef = useRef<RichTextEditorRef>(null);
 
   // Supabase 클라이언트 생성
@@ -96,6 +92,21 @@ export default function DashboardNewsPage() {
     loadData();
   }, []);
 
+  // 쿼리 파라미터에서 edit 값 확인 (상세보기 페이지에서 수정 버튼 클릭 시)
+  useEffect(() => {
+    if (isAdmin && newsList.length > 0) {
+      const editId = searchParams.get("edit");
+      if (editId) {
+        const newsToEdit = newsList.find((news) => news.id === editId);
+        if (newsToEdit) {
+          handleEdit(newsToEdit);
+          // URL에서 쿼리 파라미터 제거
+          router.replace("/dashboard/news");
+        }
+      }
+    }
+  }, [isAdmin, newsList, searchParams, router]);
+
   // 뉴스 목록 로드
   const loadNews = async () => {
     try {
@@ -126,6 +137,8 @@ export default function DashboardNewsPage() {
       image_url: "",
     });
     setImagePreview(null);
+    setIsUploadingImage(false);
+    setIsDragging(false);
     setEditingNews(null);
     setShowForm(false);
   };
@@ -168,6 +181,51 @@ export default function DashboardNewsPage() {
     } catch (error) {
       console.error("제출 오류:", error);
       alert("작업에 실패했습니다.");
+    }
+  };
+
+  // 이미지 업로드 처리 함수
+  const handleImageUpload = async (file: File) => {
+    // 파일 타입 검증
+    if (!file.type.startsWith("image/")) {
+      alert("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+
+    // 파일 크기 제한 (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("파일 크기는 10MB를 초과할 수 없습니다.");
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/dashboard/news/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "이미지 업로드에 실패했습니다.");
+      }
+
+      // 업로드 성공 시 이미지 URL 설정
+      setFormData((prev) => ({ ...prev, image_url: result.url }));
+      setImagePreview(result.url);
+    } catch (error) {
+      console.error("이미지 업로드 오류:", error);
+      alert(
+        error instanceof Error ? error.message : "이미지 업로드에 실패했습니다."
+      );
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -314,9 +372,153 @@ export default function DashboardNewsPage() {
                   htmlFor="image_url"
                   className="block text-sm font-medium mb-2"
                 >
-                  이미지 URL
+                  대표이미지
                 </label>
                 <div className="space-y-2">
+                  {/* 드래그 앤 드롭 영역 */}
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    } ${
+                      isUploadingImage ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+
+                      const files = Array.from(e.dataTransfer.files);
+                      const imageFile = files.find((file) =>
+                        file.type.startsWith("image/")
+                      );
+
+                      if (imageFile) {
+                        await handleImageUpload(imageFile);
+                      }
+                    }}
+                  >
+                    {imagePreview ? (
+                      <div className="space-y-4">
+                        <div className="relative inline-block">
+                          <img
+                            src={imagePreview}
+                            alt="대표이미지 미리보기"
+                            className="max-w-full h-auto max-h-64 rounded-lg border-2 border-border"
+                            onError={() => {
+                              setImagePreview(null);
+                              setFormData({ ...formData, image_url: "" });
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => {
+                              setImagePreview(null);
+                              setFormData({ ...formData, image_url: "" });
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const input = document.createElement("input");
+                              input.type = "file";
+                              input.accept = "image/*";
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement)
+                                  .files?.[0];
+                                if (file) {
+                                  await handleImageUpload(file);
+                                }
+                              };
+                              input.click();
+                            }}
+                            disabled={isUploadingImage}
+                          >
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            이미지 변경
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              if (formData.image_url && editorRef.current) {
+                                editorRef.current.insertImage(
+                                  formData.image_url
+                                );
+                              }
+                            }}
+                            disabled={!formData.image_url}
+                            title="에디터에 이미지 삽입"
+                          >
+                            <ImageIcon className="w-4 h-4 mr-2" />
+                            에디터에 삽입
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex flex-col items-center gap-2">
+                          <ImageIcon className="w-12 h-12 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">
+                              이미지를 드래그 앤 드롭하거나 클릭하여 선택하세요
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              지원 형식: JPG, PNG, GIF, WEBP, SVG (최대 10MB)
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.accept = "image/*";
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement)
+                                .files?.[0];
+                              if (file) {
+                                await handleImageUpload(file);
+                              }
+                            };
+                            input.click();
+                          }}
+                          disabled={isUploadingImage}
+                        >
+                          <ImageIcon className="w-4 h-4 mr-2" />
+                          이미지 선택
+                        </Button>
+                      </div>
+                    )}
+                    {isUploadingImage && (
+                      <div className="mt-4">
+                        <p className="text-sm text-muted-foreground">
+                          이미지 업로드 중...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {/* URL 직접 입력 (선택사항) */}
                   <div className="flex gap-2">
                     <Input
                       id="image_url"
@@ -331,41 +533,14 @@ export default function DashboardNewsPage() {
                           /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)
                         ) {
                           setImagePreview(url);
-                        } else {
+                        } else if (!url) {
                           setImagePreview(null);
                         }
                       }}
-                      placeholder="https://example.com/image.jpg"
+                      placeholder="또는 이미지 URL을 직접 입력하세요"
+                      className="text-sm"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        if (formData.image_url && editorRef.current) {
-                          editorRef.current.insertImage(formData.image_url);
-                        }
-                      }}
-                      disabled={!formData.image_url}
-                      title="에디터에 이미지 삽입"
-                    >
-                      <ImageIcon className="w-4 h-4 mr-1" />
-                      에디터에 삽입
-                    </Button>
                   </div>
-                  {/* 이미지 미리보기 */}
-                  {imagePreview && (
-                    <div className="border rounded-lg p-2 bg-muted/50">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        미리보기:
-                      </p>
-                      <img
-                        src={imagePreview}
-                        alt="미리보기"
-                        className="max-w-full h-auto max-h-48 rounded border"
-                        onError={() => setImagePreview(null)}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -436,33 +611,6 @@ export default function DashboardNewsPage() {
                           </span>
                         )}
                       </p>
-                      <div
-                        className="flex gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(news);
-                          }}
-                        >
-                          <Edit2 className="w-4 h-4 mr-1" />
-                          수정
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(news.id);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          삭제
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 </div>
