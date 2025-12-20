@@ -247,105 +247,125 @@ export default function Header() {
             </button>
 
             {/* 햄버거 메뉴와 프로필이 결합된 버튼 */}
-            <DropdownMenu
-              open={isDropdownOpen}
-              onOpenChange={setIsDropdownOpen}
-            >
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-2 py-1 border border-border rounded-lg hover:bg-muted transition-colors relative"
-                  aria-label="메뉴 및 프로필"
-                >
-                  {/* 햄버거 메뉴 아이콘 */}
-                  <Menu className="w-5 h-5 text-muted-foreground" />
+            {mounted ? (
+              <DropdownMenu
+                open={isDropdownOpen}
+                onOpenChange={setIsDropdownOpen}
+                modal={false}
+              >
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-2 py-1 border border-border rounded-lg hover:bg-muted transition-colors relative"
+                    aria-label="메뉴 및 프로필"
+                  >
+                    {/* 햄버거 메뉴 아이콘 */}
+                    <Menu className="w-5 h-5 text-muted-foreground" />
 
-                  {/* 사용자 프로필 Avatar */}
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage
-                      src={
-                        mounted && userProfile?.avatar_url
-                          ? userProfile.avatar_url
-                          : ""
-                      }
-                      alt={
-                        mounted && userProfile?.name
-                          ? userProfile.name
-                          : "사용자 프로필"
-                      }
-                    />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                      {mounted && user ? (
-                        getUserInitials() || <UserIcon className="w-4 h-4" />
-                      ) : (
-                        <UserIcon className="w-4 h-4" />
+                    {/* 사용자 프로필 Avatar */}
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage
+                        src={
+                          mounted && userProfile?.avatar_url
+                            ? userProfile.avatar_url
+                            : ""
+                        }
+                        alt={
+                          mounted && userProfile?.name
+                            ? userProfile.name
+                            : "사용자 프로필"
+                        }
+                      />
+                      <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                        {mounted && user ? (
+                          getUserInitials() || <UserIcon className="w-4 h-4" />
+                        ) : (
+                          <UserIcon className="w-4 h-4" />
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {isLoading ? (
+                    // 로딩 중일 때
+                    <DropdownMenuItem disabled>로딩 중...</DropdownMenuItem>
+                  ) : user ? (
+                    // 로그인 상태일 때
+                    <>
+                      {userProfile?.name && (
+                        <div className="px-2 py-1.5 text-sm font-medium text-foreground border-b border-border">
+                          {userProfile.name}
+                        </div>
                       )}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {!mounted || isLoading ? (
-                  // 마운트 전이거나 로딩 중일 때 (서버와 클라이언트 동일한 렌더링)
-                  <DropdownMenuItem disabled>로딩 중...</DropdownMenuItem>
-                ) : user ? (
-                  // 로그인 상태일 때
-                  <>
-                    {userProfile?.name && (
-                      <div className="px-2 py-1.5 text-sm font-medium text-foreground border-b border-border">
-                        {userProfile.name}
-                      </div>
-                    )}
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/dashboard"
-                        className="flex items-center gap-2"
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard"
+                          className="flex items-center gap-2"
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          대시보드
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/profile"
+                          className="flex items-center gap-2"
+                        >
+                          <UserIcon className="w-4 h-4" />
+                          프로필
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard/news"
+                          className="flex items-center gap-2"
+                        >
+                          <Newspaper className="w-4 h-4" />
+                          뉴스
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="text-destructive focus:text-destructive cursor-pointer"
                       >
-                        <LayoutDashboard className="w-4 h-4" />
-                        대시보드
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2">
-                        <UserIcon className="w-4 h-4" />
-                        프로필
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/dashboard/news"
-                        className="flex items-center gap-2"
-                      >
-                        <Newspaper className="w-4 h-4" />
-                        뉴스
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="text-destructive focus:text-destructive cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      로그아웃
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  // 비로그인 상태일 때
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/auth/login" className="block w-full">
-                        로그인
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/auth/signup" className="block w-full">
-                        회원가입
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        로그아웃
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    // 비로그인 상태일 때
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/auth/login" className="block w-full">
+                          로그인
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/auth/signup" className="block w-full">
+                          회원가입
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              // 마운트 전에는 간단한 버튼만 표시 (hydration 에러 방지)
+              <button
+                type="button"
+                className="flex items-center gap-2 px-2 py-1 border border-border rounded-lg hover:bg-muted transition-colors relative"
+                aria-label="메뉴 및 프로필"
+              >
+                <Menu className="w-5 h-5 text-muted-foreground" />
+                <Avatar className="w-6 h-6">
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                    <UserIcon className="w-4 h-4" />
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            )}
           </div>
         </div>
       </div>

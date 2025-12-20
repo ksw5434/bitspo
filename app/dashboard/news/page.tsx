@@ -6,11 +6,19 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
 import { Card, CardContent } from "@/app/_components/ui/card";
 import { Input } from "@/app/_components/ui/input";
+import { Checkbox } from "@/app/_components/ui/checkbox";
 import {
   RichTextEditor,
   RichTextEditorRef,
 } from "@/app/_components/rich-text-editor";
-import { Newspaper, Plus, X, Image as ImageIcon } from "lucide-react";
+import {
+  Newspaper,
+  Plus,
+  X,
+  Image as ImageIcon,
+  Tag,
+  Trash2,
+} from "lucide-react";
 
 /**
  * 뉴스 타입 정의
@@ -21,6 +29,16 @@ interface News {
   content: string | null;
   image_url: string | null;
   author_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * 카테고리 타입 정의
+ */
+interface Category {
+  id: string;
+  name: string;
   created_at: string;
   updated_at: string;
 }
@@ -40,7 +58,13 @@ export default function DashboardNewsPage() {
     headline: "",
     content: "",
     image_url: "",
+    category_ids: [] as string[], // 선택된 카테고리 ID 배열
   });
+  const [categories, setCategories] = useState<Category[]>([]); // 전체 카테고리 목록
+  const [newsCategories, setNewsCategories] = useState<string[]>([]); // 현재 뉴스의 카테고리 ID 배열
+  const [showCategoryManager, setShowCategoryManager] = useState(false); // 카테고리 관리 섹션 표시 여부
+  const [newCategoryName, setNewCategoryName] = useState(""); // 새 카테고리 이름
+  const [isAddingCategory, setIsAddingCategory] = useState(false); // 카테고리 추가 중 상태
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -79,6 +103,9 @@ export default function DashboardNewsPage() {
 
         setIsAdmin(true);
 
+        // 카테고리 목록 로드
+        await loadCategories();
+
         // 뉴스 목록 로드
         await loadNews();
       } catch (error) {
@@ -107,13 +134,63 @@ export default function DashboardNewsPage() {
     }
   }, [isAdmin, newsList, searchParams, router]);
 
-  // 뉴스 목록 로드
+  // 카테고리 목록 로드
+  const loadCategories = async () => {
+    try {
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (categoriesError) {
+        console.error("카테고리 로드 오류:", categoriesError);
+        return;
+      }
+
+      setCategories(categoriesData || []);
+    } catch (error) {
+      console.error("카테고리 로드 오류:", error);
+    }
+  };
+
+  // 특정 뉴스의 카테고리 로드
+  const loadNewsCategories = async (newsId: string) => {
+    try {
+      const { data: newsCategoriesData, error } = await supabase
+        .from("news_categories")
+        .select("category_id")
+        .eq("news_id", newsId);
+
+      if (error) {
+        console.error("뉴스 카테고리 로드 오류:", error);
+        return [];
+      }
+
+      return (newsCategoriesData || []).map((nc) => nc.category_id);
+    } catch (error) {
+      console.error("뉴스 카테고리 로드 오류:", error);
+      return [];
+    }
+  };
+
+  // 뉴스 목록 로드 (카테고리 포함)
   const loadNews = async () => {
     try {
-      // Supabase에서 직접 뉴스 목록 조회 (최신순)
+      // Supabase에서 직접 뉴스 목록 조회 (최신순, 카테고리 포함)
       const { data: newsData, error: newsError } = await supabase
         .from("news")
-        .select("*")
+        .select(
+          `
+          *,
+          news_categories (
+            category_id,
+            categories (
+              id,
+              name
+            )
+          )
+        `
+        )
         .order("created_at", { ascending: false });
 
       if (newsError) {
@@ -135,7 +212,9 @@ export default function DashboardNewsPage() {
       headline: "",
       content: "",
       image_url: "",
+      category_ids: [],
     });
+    setNewsCategories([]);
     setImagePreview(null);
     setIsUploadingImage(false);
     setIsDragging(false);
@@ -230,13 +309,19 @@ export default function DashboardNewsPage() {
   };
 
   // 뉴스 수정 시작
-  const handleEdit = (news: News) => {
+  const handleEdit = async (news: News) => {
     setEditingNews(news);
     const imageUrl = news.image_url || "";
+
+    // 해당 뉴스의 카테고리 로드
+    const categoryIds = await loadNewsCategories(news.id);
+    setNewsCategories(categoryIds);
+
     setFormData({
       headline: news.headline,
       content: news.content || "",
       image_url: imageUrl,
+      category_ids: categoryIds,
     });
     // 이미지 URL이 있으면 미리보기 설정
     if (imageUrl && /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(imageUrl)) {
@@ -245,6 +330,117 @@ export default function DashboardNewsPage() {
       setImagePreview(null);
     }
     setShowForm(true);
+  };
+
+  // 카테고리 체크박스 변경 핸들러
+  const handleCategoryChange = (categoryId: string, checked: boolean) => {
+    if (checked) {
+      // 카테고리 추가
+      setFormData((prev) => ({
+        ...prev,
+        category_ids: [...prev.category_ids, categoryId],
+      }));
+      setNewsCategories((prev) => [...prev, categoryId]);
+    } else {
+      // 카테고리 제거
+      setFormData((prev) => ({
+        ...prev,
+        category_ids: prev.category_ids.filter((id) => id !== categoryId),
+      }));
+      setNewsCategories((prev) => prev.filter((id) => id !== categoryId));
+    }
+  };
+
+  // 새 카테고리 추가
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert("카테고리 이름을 입력해주세요.");
+      return;
+    }
+
+    // 중복 확인
+    const exists = categories.some(
+      (cat) => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+    );
+    if (exists) {
+      alert("이미 존재하는 카테고리입니다.");
+      return;
+    }
+
+    setIsAddingCategory(true);
+
+    try {
+      const { data: newCategory, error } = await supabase
+        .from("categories")
+        .insert({
+          name: newCategoryName.trim(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("카테고리 추가 오류:", error);
+        alert("카테고리 추가에 실패했습니다.");
+        return;
+      }
+
+      // 카테고리 목록 새로고침
+      await loadCategories();
+      setNewCategoryName("");
+      alert("카테고리가 추가되었습니다.");
+    } catch (error) {
+      console.error("카테고리 추가 오류:", error);
+      alert("카테고리 추가에 실패했습니다.");
+    } finally {
+      setIsAddingCategory(false);
+    }
+  };
+
+  // 카테고리 삭제
+  const handleDeleteCategory = async (
+    categoryId: string,
+    categoryName: string
+  ) => {
+    if (
+      !confirm(
+        `정말 "${categoryName}" 카테고리를 삭제하시겠습니까?\n이 카테고리가 연결된 모든 뉴스에서도 제거됩니다.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // 먼저 해당 카테고리와 연결된 뉴스-카테고리 관계 삭제
+      const { error: relationError } = await supabase
+        .from("news_categories")
+        .delete()
+        .eq("category_id", categoryId);
+
+      if (relationError) {
+        console.error("뉴스-카테고리 관계 삭제 오류:", relationError);
+        alert("카테고리 삭제에 실패했습니다.");
+        return;
+      }
+
+      // 카테고리 삭제
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", categoryId);
+
+      if (error) {
+        console.error("카테고리 삭제 오류:", error);
+        alert("카테고리 삭제에 실패했습니다.");
+        return;
+      }
+
+      // 카테고리 목록 새로고침
+      await loadCategories();
+      alert("카테고리가 삭제되었습니다.");
+    } catch (error) {
+      console.error("카테고리 삭제 오류:", error);
+      alert("카테고리 삭제에 실패했습니다.");
+    }
   };
 
   // 뉴스 삭제
@@ -313,12 +509,120 @@ export default function DashboardNewsPage() {
           <Newspaper className="w-8 h-8 text-primary" />
           <h1 className="text-3xl font-bold">뉴스 관리</h1>
         </div>
-        {!showForm && (
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {!showForm && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowCategoryManager(!showCategoryManager)}
+              >
+                <Tag className="w-4 h-4 mr-2" />
+                카테고리 관리
+              </Button>
+              <Button onClick={() => setShowForm(true)}>
+                <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* 카테고리 관리 섹션 */}
+      {showCategoryManager && (
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Tag className="w-5 h-5" />
+                카테고리 관리
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowCategoryManager(false);
+                  setNewCategoryName("");
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* 새 카테고리 추가 */}
+            <div className="mb-6 pb-6 border-b">
+              <label
+                htmlFor="new_category"
+                className="block text-sm font-medium mb-2"
+              >
+                새 카테고리 추가
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="new_category"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="카테고리 이름을 입력하세요"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isAddingCategory) {
+                      handleAddCategory();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleAddCategory}
+                  disabled={isAddingCategory || !newCategoryName.trim()}
+                >
+                  {isAddingCategory ? (
+                    "추가 중..."
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      추가
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* 카테고리 목록 */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">카테고리 목록</h3>
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  등록된 카테고리가 없습니다.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {category.name}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          handleDeleteCategory(category.id, category.name)
+                        }
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 작성/수정 폼 */}
       {showForm && (
@@ -366,6 +670,39 @@ export default function DashboardNewsPage() {
                   placeholder="뉴스 내용을 입력하세요..."
                   editable={true}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  카테고리
+                </label>
+                <div className="flex flex-wrap gap-4 p-4 border rounded-lg">
+                  {categories.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      카테고리를 불러오는 중...
+                    </p>
+                  ) : (
+                    categories.map((category) => (
+                      <div
+                        key={category.id}
+                        className="flex items-center space-x-2"
+                      >
+                        <Checkbox
+                          id={`category-${category.id}`}
+                          checked={formData.category_ids.includes(category.id)}
+                          onCheckedChange={(checked: boolean) =>
+                            handleCategoryChange(category.id, checked === true)
+                          }
+                        />
+                        <label
+                          htmlFor={`category-${category.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {category.name}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               <div>
                 <label
@@ -602,6 +939,22 @@ export default function DashboardNewsPage() {
                         {stripHtmlTags(news.content)}
                       </p>
                     )}
+                    {/* 카테고리 표시 */}
+                    {(news as any).news_categories &&
+                      (news as any).news_categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {(news as any).news_categories.map(
+                            (nc: any, idx: number) => (
+                              <span
+                                key={idx}
+                                className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary"
+                              >
+                                {nc.categories?.name || "알 수 없음"}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      )}
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-muted-foreground">
                         작성일: {formatDate(news.created_at)}

@@ -7,11 +7,22 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    // 뉴스 목록 조회 (최신순)
+
+    // 뉴스 목록 조회 (최신순, 카테고리 포함)
     const { data: news, error } = await supabase
       .from("news")
-      .select("*")
+      .select(
+        `
+        *,
+        news_categories (
+          category_id,
+          categories (
+            id,
+            name
+          )
+        )
+      `
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -68,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { headline, content, image_url } = body;
+    const { headline, content, image_url, category_ids } = body;
 
     // 필수 필드 검증
     if (!headline || headline.trim() === "") {
@@ -98,6 +109,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 카테고리 연결 처리
+    if (
+      category_ids &&
+      Array.isArray(category_ids) &&
+      category_ids.length > 0
+    ) {
+      // 유효한 카테고리 ID인지 확인
+      const { data: validCategories } = await supabase
+        .from("categories")
+        .select("id")
+        .in("id", category_ids);
+
+      if (validCategories && validCategories.length > 0) {
+        // 뉴스-카테고리 관계 생성
+        const newsCategories = validCategories.map((category) => ({
+          news_id: news.id,
+          category_id: category.id,
+        }));
+
+        const { error: categoryError } = await supabase
+          .from("news_categories")
+          .insert(newsCategories);
+
+        if (categoryError) {
+          console.error("카테고리 연결 오류:", categoryError);
+          // 뉴스는 생성되었지만 카테고리 연결 실패 - 경고만 표시
+        }
+      }
+    }
+
     return NextResponse.json({ data: news }, { status: 201 });
   } catch (error) {
     console.error("뉴스 생성 중 예외 발생:", error);
@@ -107,4 +148,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

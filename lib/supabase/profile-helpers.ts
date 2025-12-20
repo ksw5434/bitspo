@@ -82,9 +82,7 @@ export async function updateProfile(
 /**
  * 서버에서 사용자 프로필 조회
  */
-export async function getUserProfile(
-  userId: string
-): Promise<Profile | null> {
+export async function getUserProfile(userId: string): Promise<Profile | null> {
   const supabase = await createServerClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -117,4 +115,3 @@ export async function getAllProfiles(): Promise<Profile[]> {
 
   return data || [];
 }
-

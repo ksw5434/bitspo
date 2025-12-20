@@ -113,3 +113,4 @@ DROP POLICY IF EXISTS "Only admins can delete news images" ON storage.objects;
 - 공개 버킷으로 설정하면 조회는 자동으로 허용되지만, 업로드/수정/삭제는 정책이 필요합니다
 - 파일 경로는 `{user_id}/{timestamp}-{random}.{ext}` 형식으로 저장됩니다
 
+

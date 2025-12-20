@@ -40,10 +40,21 @@ export async function GET(
       );
     }
 
-    // 뉴스 조회
+    // 뉴스 조회 (카테고리 포함)
     const { data: news, error } = await supabase
       .from("news")
-      .select("*")
+      .select(
+        `
+        *,
+        news_categories (
+          category_id,
+          categories (
+            id,
+            name
+          )
+        )
+      `
+      )
       .eq("id", newsId)
       .single();
 
@@ -113,7 +124,7 @@ export async function PUT(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { headline, content, image_url } = body;
+    const { headline, content, image_url, category_ids } = body;
 
     // 필수 필드 검증
     if (!headline || headline.trim() === "") {
@@ -149,6 +160,45 @@ export async function PUT(
         { error: "뉴스를 찾을 수 없습니다." },
         { status: 404 }
       );
+    }
+
+    // 카테고리 연결 업데이트 처리
+    if (category_ids !== undefined) {
+      // 기존 카테고리 관계 삭제
+      const { error: deleteError } = await supabase
+        .from("news_categories")
+        .delete()
+        .eq("news_id", newsId);
+
+      if (deleteError) {
+        console.error("기존 카테고리 삭제 오류:", deleteError);
+      }
+
+      // 새로운 카테고리 연결 생성
+      if (Array.isArray(category_ids) && category_ids.length > 0) {
+        // 유효한 카테고리 ID인지 확인
+        const { data: validCategories } = await supabase
+          .from("categories")
+          .select("id")
+          .in("id", category_ids);
+
+        if (validCategories && validCategories.length > 0) {
+          // 뉴스-카테고리 관계 생성
+          const newsCategories = validCategories.map((category) => ({
+            news_id: newsId,
+            category_id: category.id,
+          }));
+
+          const { error: categoryError } = await supabase
+            .from("news_categories")
+            .insert(newsCategories);
+
+          if (categoryError) {
+            console.error("카테고리 연결 오류:", categoryError);
+            // 뉴스는 수정되었지만 카테고리 연결 실패 - 경고만 표시
+          }
+        }
+      }
     }
 
     return NextResponse.json({ data: news });

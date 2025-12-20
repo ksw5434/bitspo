@@ -13,6 +13,67 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NewsCarousel } from "./_components/news-carousel";
 import { NewsSection } from "./_components/news-section";
 import { DeepDiveSection } from "./_components/deep-dive-section";
+import { createClient } from "@/lib/supabase/client";
+
+// Supabase에서 가져온 뉴스 타입 정의
+interface NewsFromSupabase {
+  id: string;
+  headline: string;
+  content: string | null;
+  image_url: string | null;
+  author_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// 화면에 표시할 뉴스 타입 (기존 형식과 호환)
+interface DisplayNews {
+  id?: string; // Supabase에서 가져온 경우 id 포함
+  image: string;
+  headline: string;
+  timestamp: string;
+}
+
+// 타임스탬프를 "19분 전" 형식으로 변환하는 함수
+function formatTimestamp(createdAt: string): string {
+  try {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffInMs = now.getTime() - created.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMinutes < 1) {
+      return "방금 전";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes}분 전`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours}시간 전`;
+    } else if (diffInDays < 7) {
+      return `${diffInDays}일 전`;
+    } else {
+      // 7일 이상이면 날짜 형식으로 표시
+      const year = created.getFullYear();
+      const month = created.getMonth() + 1;
+      const day = created.getDate();
+      return `${year}. ${month}. ${day}.`;
+    }
+  } catch (error) {
+    console.error("타임스탬프 변환 오류:", error);
+    return "알 수 없음";
+  }
+}
+
+// Supabase 뉴스 데이터를 화면 표시 형식으로 변환하는 함수
+function convertNewsToDisplayFormat(news: NewsFromSupabase): DisplayNews {
+  return {
+    id: news.id, // id 포함
+    image: news.image_url || "https://source.unsplash.com/random/200x200",
+    headline: news.headline,
+    timestamp: formatTimestamp(news.created_at),
+  };
+}
 
 // 헤드라인에서 코인 태그 추출하는 유틸리티 함수
 function extractCoinTag(headline: string): string {
@@ -52,6 +113,14 @@ function extractCoinTag(headline: string): string {
 }
 
 export default function Home() {
+  // Supabase 클라이언트 생성
+  const supabase = createClient();
+
+  // Supabase에서 가져온 뉴스 데이터 상태
+  const [supabaseNews, setSupabaseNews] = useState<NewsFromSupabase[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true); // 뉴스 데이터 로딩 상태
+  const [newsError, setNewsError] = useState<string | null>(null); // 뉴스 로드 에러 상태
+
   const newsGroups = useMemo(() => {
     const groups: Array<typeof mainPickNews> = [];
     for (let i = 0; i < mainPickNews.length; i += 3) {
@@ -67,7 +136,40 @@ export default function Home() {
   const [displayedCountAll, setDisplayedCountAll] = useState(10); // 전체 탭에서 표시할 뉴스 개수
   const [displayedCountPick, setDisplayedCountPick] = useState(10); // PICK 탭에서 표시할 뉴스 개수
   const [activeTab, setActiveTab] = useState("all"); // 현재 활성화된 탭
-  const [isLoading, setIsLoading] = useState(false); // 로딩 상태
+  const [isLoading, setIsLoading] = useState(false); // 무한 스크롤 로딩 상태
+
+  // Supabase에서 뉴스 데이터 가져오기
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setIsLoadingNews(true);
+        setNewsError(null);
+
+        // Supabase에서 뉴스 목록 조회 (최신순)
+        const { data: newsData, error: newsError } = await supabase
+          .from("news")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (newsError) {
+          console.error("뉴스 조회 오류:", newsError);
+          setNewsError("뉴스를 불러오는데 실패했습니다.");
+          // 에러가 발생해도 기존 정적 데이터를 사용할 수 있도록 에러만 설정
+          return;
+        }
+
+        // 데이터가 있으면 설정, 없으면 빈 배열
+        setSupabaseNews(newsData || []);
+      } catch (error) {
+        console.error("뉴스 로드 중 예외 발생:", error);
+        setNewsError("뉴스를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
+
+    fetchNews();
+  }, [supabase]);
 
   // IntersectionObserver를 위한 ref
   const observerTargetAllRef = useRef<HTMLDivElement>(null);
@@ -75,6 +177,15 @@ export default function Home() {
 
   // 한 번에 추가로 로드할 뉴스 개수
   const ITEMS_PER_LOAD = 10;
+
+  // Supabase 뉴스를 화면 표시 형식으로 변환
+  const displayNewsList = useMemo(() => {
+    if (supabaseNews.length > 0) {
+      return supabaseNews.map(convertNewsToDisplayFormat);
+    }
+    // Supabase 데이터가 없으면 기존 정적 데이터 사용
+    return mainPickNews;
+  }, [supabaseNews]);
 
   // 무한 스크롤 로직 - 전체 탭
   useEffect(() => {
@@ -86,14 +197,14 @@ export default function Home() {
         // 마지막 요소가 뷰포트에 들어왔고, 더 로드할 데이터가 있는 경우
         if (
           entries[0].isIntersecting &&
-          displayedCountAll < mainPickNews.length &&
+          displayedCountAll < displayNewsList.length &&
           !isLoading
         ) {
           setIsLoading(true);
           // 약간의 지연을 주어 자연스러운 로딩 효과 제공
           setTimeout(() => {
             setDisplayedCountAll((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, mainPickNews.length)
+              Math.min(prev + ITEMS_PER_LOAD, displayNewsList.length)
             );
             setIsLoading(false);
           }, 300);
@@ -110,7 +221,7 @@ export default function Home() {
     return () => {
       observer.disconnect();
     };
-  }, [displayedCountAll, activeTab, isLoading]);
+  }, [displayedCountAll, activeTab, isLoading, displayNewsList.length]);
 
   // 무한 스크롤 로직 - PICK 탭
   useEffect(() => {
@@ -122,14 +233,14 @@ export default function Home() {
         // 마지막 요소가 뷰포트에 들어왔고, 더 로드할 데이터가 있는 경우
         if (
           entries[0].isIntersecting &&
-          displayedCountPick < mainPickNews.length &&
+          displayedCountPick < displayNewsList.length &&
           !isLoading
         ) {
           setIsLoading(true);
           // 약간의 지연을 주어 자연스러운 로딩 효과 제공
           setTimeout(() => {
             setDisplayedCountPick((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, mainPickNews.length)
+              Math.min(prev + ITEMS_PER_LOAD, displayNewsList.length)
             );
             setIsLoading(false);
           }, 300);
@@ -146,7 +257,7 @@ export default function Home() {
     return () => {
       observer.disconnect();
     };
-  }, [displayedCountPick, activeTab, isLoading]);
+  }, [displayedCountPick, activeTab, isLoading, displayNewsList.length]);
 
   // 탭 변경 핸들러
   const handleTabChange = useCallback((value: string) => {
@@ -157,18 +268,18 @@ export default function Home() {
 
   // 표시할 뉴스 데이터 계산
   const displayedNewsAll = useMemo(
-    () => mainPickNews.slice(0, displayedCountAll),
-    [displayedCountAll]
+    () => displayNewsList.slice(0, displayedCountAll),
+    [displayNewsList, displayedCountAll]
   );
 
   const displayedNewsPick = useMemo(
-    () => mainPickNews.slice(0, displayedCountPick),
-    [displayedCountPick]
+    () => displayNewsList.slice(0, displayedCountPick),
+    [displayNewsList, displayedCountPick]
   );
 
   // 더 로드할 데이터가 있는지 확인
-  const hasMoreAll = displayedCountAll < mainPickNews.length;
-  const hasMorePick = displayedCountPick < mainPickNews.length;
+  const hasMoreAll = displayedCountAll < displayNewsList.length;
+  const hasMorePick = displayedCountPick < displayNewsList.length;
 
   return (
     <div className="bg-muted py-4 ">
@@ -247,12 +358,40 @@ export default function Home() {
                 {/* 뉴스 리스트 - 전체 탭 */}
                 <TabsContent value="all" className="mt-6">
                   <div className="space-y-4">
+                    {/* 뉴스 로딩 중 표시 */}
+                    {isLoadingNews && (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="text-sm text-muted-foreground">
+                          뉴스를 불러오는 중...
+                        </div>
+                      </div>
+                    )}
+                    {/* 뉴스 로드 에러 표시 */}
+                    {newsError && !isLoadingNews && (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="text-sm text-red-500">{newsError}</div>
+                      </div>
+                    )}
+                    {/* 뉴스가 없을 때 표시 */}
+                    {!isLoadingNews &&
+                      !newsError &&
+                      displayedNewsAll.length === 0 && (
+                        <div className="flex justify-center items-center py-8">
+                          <div className="text-sm text-muted-foreground">
+                            표시할 뉴스가 없습니다.
+                          </div>
+                        </div>
+                      )}
+                    {/* 뉴스 리스트 표시 */}
                     {displayedNewsAll.map((news, index) => {
                       const coinTag = extractCoinTag(news.headline);
+                      // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
+                      const newsKey =
+                        (news as DisplayNews).id || `all-${index}`;
 
                       return (
                         <Card
-                          key={`all-${index}`}
+                          key={newsKey}
                           className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group"
                         >
                           <CardContent className="p-0">
@@ -320,12 +459,40 @@ export default function Home() {
                 {/* 뉴스 리스트 - PICK 탭 */}
                 <TabsContent value="pick" className="mt-6">
                   <div className="space-y-4">
+                    {/* 뉴스 로딩 중 표시 */}
+                    {isLoadingNews && (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="text-sm text-muted-foreground">
+                          뉴스를 불러오는 중...
+                        </div>
+                      </div>
+                    )}
+                    {/* 뉴스 로드 에러 표시 */}
+                    {newsError && !isLoadingNews && (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="text-sm text-red-500">{newsError}</div>
+                      </div>
+                    )}
+                    {/* 뉴스가 없을 때 표시 */}
+                    {!isLoadingNews &&
+                      !newsError &&
+                      displayedNewsPick.length === 0 && (
+                        <div className="flex justify-center items-center py-8">
+                          <div className="text-sm text-muted-foreground">
+                            표시할 뉴스가 없습니다.
+                          </div>
+                        </div>
+                      )}
+                    {/* 뉴스 리스트 표시 */}
                     {displayedNewsPick.map((news, index) => {
                       const coinTag = extractCoinTag(news.headline);
+                      // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
+                      const newsKey =
+                        (news as DisplayNews).id || `pick-${index}`;
 
                       return (
                         <Card
-                          key={`pick-${index}`}
+                          key={newsKey}
                           className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group"
                         >
                           <CardContent className="p-0">
