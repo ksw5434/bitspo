@@ -11,10 +11,11 @@ import {
 } from "../_components/ui/tabs";
 import { Button } from "../_components/ui/button";
 import { MessageSquare, ThumbsUp, Eye, Clock } from "lucide-react";
+import { createClient } from "../../lib/supabase/client";
 
 // 게시물 타입 정의
 type Post = {
-  id: number;
+  id: string; // UUID로 변경
   title: string;
   content: string;
   author: string;
@@ -25,70 +26,44 @@ type Post = {
   comments: number;
   tags: string[];
   category?: string;
-  image?: string;
+  image?: string; // image_url을 image로 매핑
 };
 
-// 더미 데이터 생성 함수
-const generateDummyPosts = (
-  count: number,
-  category: string = "recent"
-): Post[] => {
-  const categories = [
-    "비트코인",
-    "이더리움",
-    "솔라나",
-    "디파이",
-    "NFT",
-    "메타버스",
-  ];
-  const tags = ["BTC", "ETH", "SOL", "DeFi", "NFT", "AI", "거래소", "뉴스"];
-
-  return Array.from({ length: count }, (_, i) => ({
-    id: i + 1,
-    title: `${
-      category === "popular"
-        ? "인기 "
-        : category === "discussion"
-        ? "토론 "
-        : ""
-    }게시물 제목 ${i + 1}: 암호화폐 시장 동향 분석`,
-    content: `이것은 게시물 ${
-      i + 1
-    }의 내용입니다. 암호화폐 시장의 최신 동향과 분석을 제공합니다. 블록체인 기술과 디지털 자산에 대한 심층적인 정보를 다룹니다.`,
-    author: `사용자${i + 1}`,
-    authorAvatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${
-      i + 1
-    }`,
-    timestamp: new Date(Date.now() - i * 3600000).toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    views: Math.floor(Math.random() * 10000) + 100,
-    likes: Math.floor(Math.random() * 500) + 10,
-    comments: Math.floor(Math.random() * 100) + 5,
-    tags: tags.slice(0, Math.floor(Math.random() * 3) + 1),
-    category: categories[Math.floor(Math.random() * categories.length)],
-    image: `https://picsum.photos/400/250?${Date.now()}`,
-  }));
+// HTML 태그 제거 및 텍스트만 추출 (목록 미리보기용)
+const stripHtmlTags = (html: string | null | undefined): string => {
+  if (!html) return "";
+  // HTML 태그 제거 및 HTML 엔티티 디코딩
+  return html
+    .replace(/<[^>]*>/g, "") // HTML 태그 제거
+    .replace(/&nbsp;/g, " ") // &nbsp;를 공백으로 변환
+    .replace(/&amp;/g, "&") // &amp;를 &로 변환
+    .replace(/&lt;/g, "<") // &lt;를 <로 변환
+    .replace(/&gt;/g, ">") // &gt;를 >로 변환
+    .replace(/&quot;/g, '"') // &quot;를 "로 변환
+    .replace(/&#39;/g, "'") // &#39;를 '로 변환
+    .trim();
 };
 
 export default function CommunityPage() {
+  // Supabase 클라이언트를 useMemo로 메모이제이션하여 매 렌더링마다 새로 생성되지 않도록 함
+  const supabase = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return createClient();
+  }, []);
+
   const [activeTab, setActiveTab] = useState("recent");
   const [displayedCountRecent, setDisplayedCountRecent] = useState(10);
   const [displayedCountPopular, setDisplayedCountPopular] = useState(10);
   const [displayedCountDiscussion, setDisplayedCountDiscussion] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // 초기 데이터 로딩 상태
 
-  // 더미 데이터 생성
-  const recentPosts = useMemo(() => generateDummyPosts(50, "recent"), []);
-  const popularPosts = useMemo(() => generateDummyPosts(50, "popular"), []);
-  const discussionPosts = useMemo(
-    () => generateDummyPosts(50, "discussion"),
-    []
-  );
+  // 실제 데이터 상태
+  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
+  const [popularPosts, setPopularPosts] = useState<Post[]>([]);
+  const [discussionPosts, setDiscussionPosts] = useState<Post[]>([]);
 
   // IntersectionObserver를 위한 ref
   const observerTargetRecentRef = useRef<HTMLDivElement>(null);
@@ -96,6 +71,237 @@ export default function CommunityPage() {
   const observerTargetDiscussionRef = useRef<HTMLDivElement>(null);
 
   const ITEMS_PER_LOAD = 10;
+
+  // communities 테이블에서 데이터 가져오기
+  useEffect(() => {
+    // Supabase 클라이언트가 없으면 실행하지 않음
+    if (!supabase) return;
+
+    const fetchPosts = async () => {
+      try {
+        setIsInitialLoading(true);
+
+        // 라우트 전환 시 상태 초기화
+        setRecentPosts([]);
+        setPopularPosts([]);
+        setDiscussionPosts([]);
+
+        // 헬퍼 함수: 게시물 데이터를 Post 타입으로 변환
+        const transformPosts = (
+          communitiesData: any[],
+          profilesMap: Map<
+            string,
+            { name: string | null; avatar_url: string | null }
+          >
+        ): Post[] => {
+          return communitiesData.map((item: any) => {
+            const profile = profilesMap.get(item.user_id);
+
+            return {
+              id: item.id,
+              title: item.title,
+              content: stripHtmlTags(item.content), // HTML 태그 제거하여 텍스트만 표시
+              author: profile?.name || "익명",
+              authorAvatar: profile?.avatar_url || undefined,
+              timestamp: new Date(item.created_at).toLocaleString("ko-KR", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              views: item.views || 0,
+              likes: item.like_count || 0,
+              comments: item.comment_count || 0,
+              tags: item.tags || [],
+              category: item.category || undefined,
+              image: item.image_url || undefined,
+            };
+          });
+        };
+
+        // 최근 게시물 가져오기 (created_at 기준 내림차순)
+        const { data: recentData, error: recentError } = await supabase
+          .from("communities")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (recentError) {
+          console.error("최근 게시물 조회 오류:", {
+            message: recentError.message,
+            details: recentError.details,
+            hint: recentError.hint,
+            code: recentError.code,
+          });
+          setRecentPosts([]); // 에러 발생 시 빈 배열 설정
+        } else if (recentData && recentData.length > 0) {
+          // 작성자 user_id 목록 수집
+          const userIds = [...new Set(recentData.map((item) => item.user_id))];
+
+          // profiles 정보 한 번에 조회 (에러 발생해도 게시물은 표시)
+          let profilesMap = new Map<
+            string,
+            { name: string | null; avatar_url: string | null }
+          >();
+
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from("profiles")
+              .select("id, name, avatar_url")
+              .in("id", userIds);
+
+            if (profilesError) {
+              console.warn(
+                "프로필 조회 오류 (게시물은 표시됨):",
+                profilesError
+              );
+            } else if (profilesData) {
+              profilesData.forEach((profile) => {
+                profilesMap.set(profile.id, {
+                  name: profile.name,
+                  avatar_url: profile.avatar_url,
+                });
+              });
+            }
+          }
+
+          const transformedRecentPosts = transformPosts(
+            recentData,
+            profilesMap
+          );
+          setRecentPosts(transformedRecentPosts);
+        } else {
+          setRecentPosts([]);
+        }
+
+        // 인기 게시물 가져오기 (like_count 기준 내림차순)
+        const { data: popularData, error: popularError } = await supabase
+          .from("communities")
+          .select("*")
+          .order("like_count", { ascending: false })
+          .limit(100);
+
+        if (popularError) {
+          console.error("인기 게시물 조회 오류:", {
+            message: popularError.message,
+            details: popularError.details,
+            hint: popularError.hint,
+            code: popularError.code,
+          });
+          setPopularPosts([]); // 에러 발생 시 빈 배열 설정
+        } else if (popularData && popularData.length > 0) {
+          const userIds = [...new Set(popularData.map((item) => item.user_id))];
+
+          // profiles 정보 한 번에 조회 (에러 발생해도 게시물은 표시)
+          let profilesMap = new Map<
+            string,
+            { name: string | null; avatar_url: string | null }
+          >();
+
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from("profiles")
+              .select("id, name, avatar_url")
+              .in("id", userIds);
+
+            if (profilesError) {
+              console.warn(
+                "프로필 조회 오류 (게시물은 표시됨):",
+                profilesError
+              );
+            } else if (profilesData) {
+              profilesData.forEach((profile) => {
+                profilesMap.set(profile.id, {
+                  name: profile.name,
+                  avatar_url: profile.avatar_url,
+                });
+              });
+            }
+          }
+
+          const transformedPopularPosts = transformPosts(
+            popularData,
+            profilesMap
+          );
+          setPopularPosts(transformedPopularPosts);
+        } else {
+          setPopularPosts([]);
+        }
+
+        // 토론 게시물 가져오기 (comment_count 기준 내림차순)
+        const { data: discussionData, error: discussionError } = await supabase
+          .from("communities")
+          .select("*")
+          .order("comment_count", { ascending: false })
+          .limit(100);
+
+        if (discussionError) {
+          console.error("토론 게시물 조회 오류:", {
+            message: discussionError.message,
+            details: discussionError.details,
+            hint: discussionError.hint,
+            code: discussionError.code,
+          });
+          setDiscussionPosts([]); // 에러 발생 시 빈 배열 설정
+        } else if (discussionData && discussionData.length > 0) {
+          const userIds = [
+            ...new Set(discussionData.map((item) => item.user_id)),
+          ];
+
+          // profiles 정보 한 번에 조회 (에러 발생해도 게시물은 표시)
+          let profilesMap = new Map<
+            string,
+            { name: string | null; avatar_url: string | null }
+          >();
+
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from("profiles")
+              .select("id, name, avatar_url")
+              .in("id", userIds);
+
+            if (profilesError) {
+              console.warn(
+                "프로필 조회 오류 (게시물은 표시됨):",
+                profilesError
+              );
+            } else if (profilesData) {
+              profilesData.forEach((profile) => {
+                profilesMap.set(profile.id, {
+                  name: profile.name,
+                  avatar_url: profile.avatar_url,
+                });
+              });
+            }
+          }
+
+          const transformedDiscussionPosts = transformPosts(
+            discussionData,
+            profilesMap
+          );
+          setDiscussionPosts(transformedDiscussionPosts);
+        } else {
+          setDiscussionPosts([]);
+        }
+      } catch (error) {
+        console.error("게시물 데이터 로드 오류:", error);
+        // 예외 발생 시에도 빈 배열 설정
+        setRecentPosts([]);
+        setPopularPosts([]);
+        setDiscussionPosts([]);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    fetchPosts();
+
+    // cleanup 함수: 컴포넌트 언마운트 시 실행
+    return () => {
+      // 비동기 작업 취소를 위한 플래그는 필요시 추가 가능
+    };
+  }, [supabase]);
 
   // 무한 스크롤 로직 - 최근 탭
   useEffect(() => {
@@ -226,7 +432,7 @@ export default function CommunityPage() {
   const PostCard = ({ post }: { post: Post }) => (
     <Card className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
       <CardContent className="p-0">
-        <Link href={`/community/post/${post.id}`} className="block">
+        <Link href={`/community/${post.id}`} className="block">
           <div className="p-6 space-y-3">
             <div className="flex items-center gap-3">
               {/* 작성자 아바타 */}
@@ -283,13 +489,19 @@ export default function CommunityPage() {
               <p className="text-sm text-muted-foreground line-clamp-2 group-hover:text-muted-foreground/70 transition-colors">
                 {post.content}
               </p>
-              <div className="w-full h-60 flex justify-start">
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="h-full object-contain object-left"
-                />
-              </div>
+              {post.image && (
+                <div className="w-full h-60 flex justify-start">
+                  <img
+                    src={post.image}
+                    alt={post.title}
+                    className="h-full object-contain object-left"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
             </div>
             {/* 작성자 정보 및 통계 */}
             <div className="flex items-center">
@@ -362,65 +574,107 @@ export default function CommunityPage() {
 
                   {/* 게시물 목록 - 최근 탭 */}
                   <TabsContent value="recent" className="mt-6">
-                    <div className="space-y-4">
-                      {displayedRecentPosts.map((post) => (
-                        <PostCard key={`recent-${post.id}`} post={post} />
-                      ))}
-                      {hasMoreRecent && (
-                        <div
-                          ref={observerTargetRecentRef}
-                          className="flex justify-center items-center py-8"
-                        >
-                          {isLoading && (
-                            <div className="text-sm text-muted-foreground">
-                              로딩 중...
-                            </div>
-                          )}
+                    {isInitialLoading ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물을 불러오는 중...
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : displayedRecentPosts.length === 0 ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물이 없습니다.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {displayedRecentPosts.map((post) => (
+                          <PostCard key={`recent-${post.id}`} post={post} />
+                        ))}
+                        {hasMoreRecent && (
+                          <div
+                            ref={observerTargetRecentRef}
+                            className="flex justify-center items-center py-8"
+                          >
+                            {isLoading && (
+                              <div className="text-sm text-muted-foreground">
+                                로딩 중...
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
 
                   {/* 게시물 목록 - 인기 탭 */}
                   <TabsContent value="popular" className="mt-6">
-                    <div className="space-y-4">
-                      {displayedPopularPosts.map((post) => (
-                        <PostCard key={`popular-${post.id}`} post={post} />
-                      ))}
-                      {hasMorePopular && (
-                        <div
-                          ref={observerTargetPopularRef}
-                          className="flex justify-center items-center py-8"
-                        >
-                          {isLoading && (
-                            <div className="text-sm text-muted-foreground">
-                              로딩 중...
-                            </div>
-                          )}
+                    {isInitialLoading ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물을 불러오는 중...
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : displayedPopularPosts.length === 0 ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물이 없습니다.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {displayedPopularPosts.map((post) => (
+                          <PostCard key={`popular-${post.id}`} post={post} />
+                        ))}
+                        {hasMorePopular && (
+                          <div
+                            ref={observerTargetPopularRef}
+                            className="flex justify-center items-center py-8"
+                          >
+                            {isLoading && (
+                              <div className="text-sm text-muted-foreground">
+                                로딩 중...
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
 
                   {/* 게시물 목록 - 토론 탭 */}
                   <TabsContent value="discussion" className="mt-6">
-                    <div className="space-y-4">
-                      {displayedDiscussionPosts.map((post) => (
-                        <PostCard key={`discussion-${post.id}`} post={post} />
-                      ))}
-                      {hasMoreDiscussion && (
-                        <div
-                          ref={observerTargetDiscussionRef}
-                          className="flex justify-center items-center py-8"
-                        >
-                          {isLoading && (
-                            <div className="text-sm text-muted-foreground">
-                              로딩 중...
-                            </div>
-                          )}
+                    {isInitialLoading ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물을 불러오는 중...
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : displayedDiscussionPosts.length === 0 ? (
+                      <div className="flex justify-center items-center py-12">
+                        <div className="text-sm text-muted-foreground">
+                          게시물이 없습니다.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {displayedDiscussionPosts.map((post) => (
+                          <PostCard key={`discussion-${post.id}`} post={post} />
+                        ))}
+                        {hasMoreDiscussion && (
+                          <div
+                            ref={observerTargetDiscussionRef}
+                            className="flex justify-center items-center py-8"
+                          >
+                            {isLoading && (
+                              <div className="text-sm text-muted-foreground">
+                                로딩 중...
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </div>
@@ -486,7 +740,7 @@ export default function CommunityPage() {
                 {displayedPopularPosts.slice(0, 5).map((post) => (
                   <Link
                     key={`sidebar-${post.id}`}
-                    href={`/community/post/${post.id}`}
+                    href={`/community/${post.id}`}
                     className="block p-2 hover:bg-muted rounded transition-colors"
                   >
                     <h4 className="text-sm font-medium line-clamp-2 mb-1">

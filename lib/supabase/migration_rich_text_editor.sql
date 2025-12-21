@@ -84,3 +84,4 @@ CREATE POLICY "Only admins can delete news images"
 -- (변경 불필요, 이미 TEXT 타입)
 
 
+

@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getUserProfile } from "@/lib/supabase/profile-helpers";
+import { getUserProfile } from "@/lib/supabase/profile-helpers-server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
 import { UserIcon, Calendar, Mail, TrendingUp, Activity, BarChart3 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "대시보드 - 비트스포",
+  description: "계정 정보와 활동 통계를 확인할 수 있는 대시보드입니다.",
+};
 
 /**
  * 대시보드 페이지

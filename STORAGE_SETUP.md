@@ -114,3 +114,4 @@ DROP POLICY IF EXISTS "Only admins can delete news images" ON storage.objects;
 - 파일 경로는 `{user_id}/{timestamp}-{random}.{ext}` 형식으로 저장됩니다
 
 
+

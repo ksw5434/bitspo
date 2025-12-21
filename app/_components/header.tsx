@@ -309,7 +309,7 @@ export default function Header() {
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link
-                          href="/profile"
+                          href="/dashboard/profile"
                           className="flex items-center gap-2"
                         >
                           <UserIcon className="w-4 h-4" />

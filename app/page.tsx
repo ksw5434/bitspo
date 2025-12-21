@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Card, CardContent } from "./_components/ui/card";
 import {
   Tabs,
@@ -388,57 +389,60 @@ export default function Home() {
                       // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
                       const newsKey =
                         (news as DisplayNews).id || `all-${index}`;
+                      // 뉴스 ID가 있으면 해당 ID로 라우팅, 없으면 index 사용
+                      const newsId =
+                        (news as DisplayNews).id || index.toString();
 
                       return (
-                        <Card
-                          key={newsKey}
-                          className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group"
-                        >
-                          <CardContent className="p-0">
-                            <div className="flex gap-4">
-                              {/* 왼쪽: 텍스트 영역 */}
-                              <div className="flex-1 py-4">
-                                {/* 코인 태그 */}
-                                <div className="mb-2">
-                                  <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
-                                    {coinTag}
-                                  </span>
-                                </div>
-                                {/* 헤드라인 */}
-                                <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                                  {news.headline}
-                                </h3>
-                                {/* 요약 텍스트 (헤드라인 일부 사용) */}
-                                <p
-                                  className="text-sm text-muted-foreground mb-2 line-clamp-2 group-hover:text-muted-foreground/70 
+                        <Link key={newsKey} href={`/news/${newsId}`}>
+                          <Card className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group">
+                            <CardContent className="p-0">
+                              <div className="flex gap-4">
+                                {/* 왼쪽: 텍스트 영역 */}
+                                <div className="flex-1 py-4">
+                                  {/* 코인 태그 */}
+                                  <div className="mb-2">
+                                    <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+                                      {coinTag}
+                                    </span>
+                                  </div>
+                                  {/* 헤드라인 */}
+                                  <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                    {news.headline}
+                                  </h3>
+                                  {/* 요약 텍스트 (헤드라인 일부 사용) */}
+                                  <p
+                                    className="text-sm text-muted-foreground mb-2 line-clamp-2 group-hover:text-muted-foreground/70 
                             transition-colors duration-300"
-                                >
-                                  {news.headline.length > 220
-                                    ? `${news.headline.substring(0, 220)}...`
-                                    : news.headline}
-                                </p>
-                                {/* 타임스탬프 */}
-                                <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
-                                  {news.timestamp}
-                                </p>
+                                  >
+                                    {news.headline.length > 220
+                                      ? `${news.headline.substring(0, 220)}...`
+                                      : news.headline}
+                                  </p>
+                                  {/* 타임스탬프 */}
+                                  <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
+                                    {news.timestamp}
+                                  </p>
+                                </div>
+                                {/* 오른쪽: 이미지 */}
+                                <div className="flex-shrink-0 w-32 h-32">
+                                  <img
+                                    src={news.image}
+                                    alt={news.headline}
+                                    className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      // 이미지 로드 실패 시 대체 이미지로 변경
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              {/* 오른쪽: 이미지 */}
-                              <div className="flex-shrink-0 w-32 h-32">
-                                <img
-                                  src={news.image}
-                                  alt={news.headline}
-                                  className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    // 이미지 로드 실패 시 대체 이미지로 변경
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </Link>
                       );
                     })}
                     {/* IntersectionObserver 타겟 요소 - 전체 탭 */}
@@ -489,47 +493,50 @@ export default function Home() {
                       // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
                       const newsKey =
                         (news as DisplayNews).id || `pick-${index}`;
+                      // 뉴스 ID가 있으면 해당 ID로 라우팅, 없으면 index 사용
+                      const newsId =
+                        (news as DisplayNews).id || index.toString();
 
                       return (
-                        <Card
-                          key={newsKey}
-                          className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group"
-                        >
-                          <CardContent className="p-0">
-                            <div className="flex gap-4">
-                              <div className="flex-1 py-4">
-                                <div className="mb-2">
-                                  <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
-                                    {coinTag}
-                                  </span>
+                        <Link key={newsKey} href={`/news/${newsId}`}>
+                          <Card className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group">
+                            <CardContent className="p-0">
+                              <div className="flex gap-4">
+                                <div className="flex-1 py-4">
+                                  <div className="mb-2">
+                                    <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
+                                      {coinTag}
+                                    </span>
+                                  </div>
+                                  <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                    {news.headline}
+                                  </h3>
+                                  <p className="text-sm text-gray-600 mb-2 group-hover:text-gray-500/50 transition-colors duration-300 line-clamp-2">
+                                    {news.headline.length > 50
+                                      ? `${news.headline.substring(0, 50)}...`
+                                      : news.headline}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
+                                    {news.timestamp}
+                                  </p>
                                 </div>
-                                <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
-                                  {news.headline}
-                                </h3>
-                                <p className="text-sm text-gray-600 mb-2 group-hover:text-gray-500/50 transition-colors duration-300 line-clamp-2">
-                                  {news.headline.length > 50
-                                    ? `${news.headline.substring(0, 50)}...`
-                                    : news.headline}
-                                </p>
-                                <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
-                                  {news.timestamp}
-                                </p>
+                                <div className="flex-shrink-0 w-32 h-32">
+                                  <img
+                                    src={news.image}
+                                    alt={news.headline}
+                                    className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              <div className="flex-shrink-0 w-32 h-32">
-                                <img
-                                  src={news.image}
-                                  alt={news.headline}
-                                  className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                            </CardContent>
+                          </Card>
+                        </Link>
                       );
                     })}
                     {/* IntersectionObserver 타겟 요소 - PICK 탭 */}

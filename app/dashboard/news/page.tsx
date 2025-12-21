@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
@@ -44,11 +44,43 @@ interface Category {
 }
 
 /**
+ * 쿼리 파라미터 처리 컴포넌트 (Suspense 경계 내에서 사용)
+ */
+function EditQueryHandler({
+  isAdmin,
+  newsList,
+  onEdit,
+  router,
+}: {
+  isAdmin: boolean;
+  newsList: News[];
+  onEdit: (news: News) => void;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (isAdmin && newsList.length > 0) {
+      const editId = searchParams.get("edit");
+      if (editId) {
+        const newsToEdit = newsList.find((news) => news.id === editId);
+        if (newsToEdit) {
+          onEdit(newsToEdit);
+          // URL에서 쿼리 파라미터 제거
+          router.replace("/dashboard/news");
+        }
+      }
+    }
+  }, [isAdmin, newsList, searchParams, router, onEdit]);
+
+  return null;
+}
+
+/**
  * 관리자 뉴스 게시판 페이지
  */
-export default function DashboardNewsPage() {
+function DashboardNewsPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -118,21 +150,6 @@ export default function DashboardNewsPage() {
 
     loadData();
   }, []);
-
-  // 쿼리 파라미터에서 edit 값 확인 (상세보기 페이지에서 수정 버튼 클릭 시)
-  useEffect(() => {
-    if (isAdmin && newsList.length > 0) {
-      const editId = searchParams.get("edit");
-      if (editId) {
-        const newsToEdit = newsList.find((news) => news.id === editId);
-        if (newsToEdit) {
-          handleEdit(newsToEdit);
-          // URL에서 쿼리 파라미터 제거
-          router.replace("/dashboard/news");
-        }
-      }
-    }
-  }, [isAdmin, newsList, searchParams, router]);
 
   // 카테고리 목록 로드
   const loadCategories = async () => {
@@ -308,8 +325,8 @@ export default function DashboardNewsPage() {
     }
   };
 
-  // 뉴스 수정 시작
-  const handleEdit = async (news: News) => {
+  // 뉴스 수정 시작 (useCallback으로 메모이제이션하여 안정적인 참조 유지)
+  const handleEdit = useCallback(async (news: News) => {
     setEditingNews(news);
     const imageUrl = news.image_url || "";
 
@@ -330,7 +347,7 @@ export default function DashboardNewsPage() {
       setImagePreview(null);
     }
     setShowForm(true);
-  };
+  }, []);
 
   // 카테고리 체크박스 변경 핸들러
   const handleCategoryChange = (categoryId: string, checked: boolean) => {
@@ -972,6 +989,33 @@ export default function DashboardNewsPage() {
           ))
         )}
       </div>
+
+      {/* 쿼리 파라미터 처리 (Suspense 경계 내) */}
+      <Suspense fallback={null}>
+        <EditQueryHandler
+          isAdmin={isAdmin}
+          newsList={newsList}
+          onEdit={handleEdit}
+          router={router}
+        />
+      </Suspense>
     </div>
+  );
+}
+
+/**
+ * 메인 페이지 컴포넌트 (Suspense 경계로 감싸서 export)
+ */
+export default function DashboardNewsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <DashboardNewsPageContent />
+    </Suspense>
   );
 }

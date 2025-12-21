@@ -1,11 +1,24 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getUserProfile } from "@/lib/supabase/profile-helpers";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
-import { UserIcon, Mail, Calendar, Save } from "lucide-react";
+import { getUserProfile } from "@/lib/supabase/profile-helpers-server";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/_components/ui/card";
+import { UserIcon, Mail, Calendar } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/app/_components/ui/button";
+import { AvatarUpload } from "./_components/avatar-upload";
+import { ProfileEditForm } from "./_components/profile-edit-form";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "프로필 설정 - 비트스포",
+  description: "프로필 정보를 확인하고 수정할 수 있는 페이지입니다.",
+};
 
 /**
  * 프로필 페이지
@@ -28,17 +41,6 @@ export default async function ProfilePage() {
 
   // 사용자 프로필 정보 가져오기
   const profile = await getUserProfile(user.id);
-
-  // 사용자 이름 또는 이메일에서 이니셜 추출
-  const getUserInitials = () => {
-    if (profile?.name) {
-      return profile.name.charAt(0).toUpperCase();
-    }
-    if (user.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return "U";
-  };
 
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -69,25 +71,12 @@ export default async function ProfilePage() {
         <CardContent>
           <div className="space-y-6">
             {/* 아바타 섹션 */}
-            <div className="flex items-center gap-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage
-                  src={profile?.avatar_url || ""}
-                  alt={profile?.name || "사용자 프로필"}
-                />
-                <AvatarFallback className="bg-muted text-muted-foreground text-3xl">
-                  {getUserInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  프로필 사진
-                </p>
-                <Button variant="outline" size="sm" disabled>
-                  사진 변경 (준비 중)
-                </Button>
-              </div>
-            </div>
+            <AvatarUpload
+              userId={user.id}
+              currentAvatarUrl={profile?.avatar_url || null}
+              userName={profile?.name || null}
+              userEmail={user.email || ""}
+            />
 
             {/* 사용자 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -97,9 +86,7 @@ export default async function ProfilePage() {
                 </label>
                 <div className="flex items-center gap-2">
                   <UserIcon className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-base">
-                    {profile?.name || "이름 없음"}
-                  </p>
+                  <p className="text-base">{profile?.name || "이름 없음"}</p>
                 </div>
               </div>
 
@@ -130,7 +117,9 @@ export default async function ProfilePage() {
                   </label>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-base">{formatDate(profile.updated_at)}</p>
+                    <p className="text-base">
+                      {formatDate(profile.updated_at)}
+                    </p>
                   </div>
                 </div>
               )}
@@ -139,26 +128,17 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
+      {/* 프로필 상세 정보 편집 카드 */}
+      <ProfileEditForm profile={profile} />
+
       {/* 계정 설정 카드 */}
-      <Card>
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle>계정 설정</CardTitle>
           <CardDescription>계정 관련 설정을 관리합니다</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-              <div>
-                <p className="font-medium">프로필 편집</p>
-                <p className="text-sm text-muted-foreground">
-                  이름 및 프로필 사진 변경
-                </p>
-              </div>
-              <Button variant="outline" size="sm" disabled>
-                편집 (준비 중)
-              </Button>
-            </div>
-
             <div className="flex items-center justify-between p-4 border border-border rounded-lg">
               <div>
                 <p className="font-medium">비밀번호 변경</p>
@@ -177,17 +157,12 @@ export default async function ProfilePage() {
       {/* 빠른 링크 */}
       <div className="mt-6 flex gap-4">
         <Link href="/dashboard">
-          <Button variant="outline">
-            대시보드로 돌아가기
-          </Button>
+          <Button variant="outline">대시보드로 돌아가기</Button>
         </Link>
         <Link href="/">
-          <Button variant="outline">
-            홈으로
-          </Button>
+          <Button variant="outline">홈으로</Button>
         </Link>
       </div>
     </div>
   );
 }
-
