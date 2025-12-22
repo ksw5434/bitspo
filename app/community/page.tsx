@@ -461,7 +461,7 @@ export default function CommunityPage() {
 
   // 게시물 카드 컴포넌트
   const PostCard = ({ post }: { post: Post }) => (
-    <Card className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+    <Card className="bg-muted py-0 overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
       <CardContent className="p-0">
         <Link href={`/community/${post.id}`} className="block">
           <div className="p-6 space-y-3">
@@ -598,7 +598,7 @@ export default function CommunityPage() {
 
                   {/* 게시물 작성 버튼 - 로그인한 유저만 표시 */}
                   {isAuthenticated && (
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-2 flex justify-end">
                       <Button asChild>
                         <Link href="/community/write">글쓰기</Link>
                       </Button>
@@ -606,7 +606,7 @@ export default function CommunityPage() {
                   )}
 
                   {/* 게시물 목록 - 최근 탭 */}
-                  <TabsContent value="recent" className="mt-6">
+                  <TabsContent value="recent" className="mt-2">
                     {isInitialLoading ? (
                       <div className="flex justify-center items-center py-12">
                         <div className="text-sm text-muted-foreground">
