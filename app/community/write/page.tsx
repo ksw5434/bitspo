@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -27,7 +27,8 @@ const CATEGORIES = [
   "기타",
 ];
 
-export default function CommunityWritePage() {
+// useSearchParams를 사용하는 내부 컴포넌트
+function CommunityWriteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -678,5 +679,26 @@ export default function CommunityWritePage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Suspense로 감싼 메인 컴포넌트
+export default function CommunityWritePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-muted py-4 min-h-screen">
+          <div className="container mx-auto">
+            <div className="bg-card rounded-lg p-8">
+              <div className="text-center text-muted-foreground">
+                로딩 중...
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <CommunityWriteContent />
+    </Suspense>
   );
 }
