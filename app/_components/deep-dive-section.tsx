@@ -7,6 +7,9 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// 기본 placeholder 이미지 URL (안정적인 서비스 사용)
+const DEFAULT_PLACEHOLDER_IMAGE = "https://via.placeholder.com/400x300?text=No+Image";
+
 // 딥다이브 뉴스 아이템 타입 정의
 type DeepDiveNewsItem = {
   image: string;
@@ -109,9 +112,12 @@ export function DeepDiveSection({ newsItems }: DeepDiveSectionProps) {
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
                         onError={(e) => {
-                          // 이미지 로드 실패 시 대체 이미지로 변경
+                          // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
                           const target = e.target as HTMLImageElement;
-                          target.src = `https://source.unsplash.com/random/400x300?${Date.now()}`;
+                          // 이미 대체 이미지인 경우 더 이상 변경하지 않음
+                          if (!target.src.includes('placeholder.com')) {
+                            target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                          }
                         }}
                       />
                     </div>

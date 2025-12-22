@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
@@ -43,6 +43,7 @@ const POPULAR_TAGS = [
 
 export default function CommunityWritePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const editorRef = useRef<RichTextEditorRef>(null);
 
@@ -58,30 +59,155 @@ export default function CommunityWritePage() {
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
 
-  // 로그인 확인
+  // 로그인 확인 및 뉴스 데이터 로드
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuthAndLoadNews = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
       if (!user) {
         // 비로그인 사용자는 로그인 페이지로 리다이렉트
-        router.push("/auth/login?redirect=/community/write");
+        const newsId = searchParams.get("newsId");
+        const redirectUrl = newsId
+          ? `/community/write?newsId=${newsId}`
+          : "/community/write";
+        router.push(`/auth/login?redirect=${encodeURIComponent(redirectUrl)}`);
         return;
       }
 
       setIsAuthenticated(true);
       setCurrentUser(user);
+
+      // 뉴스 ID가 쿼리 파라미터에 있는 경우 뉴스 데이터 로드
+      const newsId = searchParams.get("newsId");
+      if (newsId) {
+        await loadNewsData(newsId);
+      }
     };
 
-    checkAuth();
-  }, [supabase, router]);
+    checkAuthAndLoadNews();
+  }, [supabase, router, searchParams]);
+
+  // 뉴스 데이터 로드 함수
+  const loadNewsData = async (newsId: string) => {
+    if (!supabase) return;
+
+    try {
+      setIsLoadingNews(true);
+
+      // 뉴스 데이터 조회
+      const { data: newsData, error: newsError } = await supabase
+        .from("news")
+        .select("*")
+        .eq("id", newsId)
+        .single();
+
+      if (newsError) {
+        console.error("뉴스 조회 오류:", newsError);
+        showToast("뉴스 정보를 불러오는데 실패했습니다.", "error");
+        return;
+      }
+
+      if (newsData) {
+        // 뉴스 헤드라인에서 코인 태그 추출
+        const extractCoinTag = (headline: string): string => {
+          const coinKeywords: { [key: string]: string } = {
+            비트코인: "BTC",
+            BTC: "BTC",
+            솔라나: "SOL",
+            SOL: "SOL",
+            이더리움: "ETH",
+            ETH: "ETH",
+            리플: "XRP",
+            XRP: "XRP",
+            도지코인: "DOGE",
+            DOGE: "DOGE",
+            바이낸스: "BNB",
+            BNB: "BNB",
+            테더: "USDT",
+            USDT: "USDT",
+            카르다노: "ADA",
+            ADA: "ADA",
+            폴카닷: "DOT",
+            DOT: "DOT",
+            아발란체: "AVAX",
+            AVAX: "AVAX",
+            체인링크: "LINK",
+            LINK: "LINK",
+            펠로: "PEPE",
+            PEPE: "PEPE",
+          };
+
+          for (const [keyword, tag] of Object.entries(coinKeywords)) {
+            if (headline.includes(keyword)) {
+              return tag;
+            }
+          }
+          return "BTC";
+        };
+
+        // 본문 내용 추출 (문자열 또는 JSONB 처리)
+        let contentText = "";
+        if (typeof newsData.content === "string") {
+          contentText = newsData.content;
+        } else if (
+          typeof newsData.content === "object" &&
+          newsData.content !== null
+        ) {
+          // JSONB인 경우 텍스트 추출
+          try {
+            const extractText = (node: any): string => {
+              if (typeof node === "string") return node;
+              if (node?.text) return node.text;
+              if (node?.content && Array.isArray(node.content)) {
+                return node.content.map(extractText).join("");
+              }
+              return "";
+            };
+            contentText =
+              extractText(newsData.content) || JSON.stringify(newsData.content);
+          } catch (e) {
+            contentText = JSON.stringify(newsData.content);
+          }
+        }
+
+        // 폼 데이터에 뉴스 정보 미리 채우기
+        const coinTag = extractCoinTag(newsData.headline);
+        const tags = [coinTag];
+
+        // 뉴스 링크 추가
+        const newsLink = `\n\n<a href="/news/${newsId}" target="_blank" rel="noopener noreferrer">원본 뉴스 보기</a>`;
+        const contentWithLink = contentText + newsLink;
+
+        setFormData({
+          title: `[뉴스] ${newsData.headline}`,
+          content: contentWithLink,
+          category: "뉴스",
+          tags: tags,
+          image_url: newsData.image_url || "",
+        });
+
+        // 이미지가 있으면 미리보기 설정
+        if (newsData.image_url) {
+          setImagePreview(newsData.image_url);
+        }
+
+        showToast("뉴스 정보가 불러와졌습니다.", "success");
+      }
+    } catch (error) {
+      console.error("뉴스 데이터 로드 오류:", error);
+      showToast("뉴스 정보를 불러오는데 실패했습니다.", "error");
+    } finally {
+      setIsLoadingNews(false);
+    }
+  };
 
   // 토스트 메시지 표시
   const showToast = (message: string, type: "success" | "error") => {
@@ -235,13 +361,15 @@ export default function CommunityWritePage() {
     }
   };
 
-  // 로그인하지 않은 경우 로딩 표시
-  if (!isAuthenticated) {
+  // 로그인하지 않은 경우 또는 뉴스 데이터 로딩 중 로딩 표시
+  if (!isAuthenticated || isLoadingNews) {
     return (
       <div className="bg-muted py-4 min-h-screen">
         <div className="container mx-auto">
           <div className="bg-card rounded-lg p-8">
-            <div className="text-center text-muted-foreground">로딩 중...</div>
+            <div className="text-center text-muted-foreground">
+              {isLoadingNews ? "뉴스 정보를 불러오는 중..." : "로딩 중..."}
+            </div>
           </div>
         </div>
       </div>

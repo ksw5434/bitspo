@@ -66,11 +66,14 @@ function formatTimestamp(createdAt: string): string {
   }
 }
 
+// 기본 placeholder 이미지 URL (안정적인 서비스 사용)
+const DEFAULT_PLACEHOLDER_IMAGE = "https://via.placeholder.com/200x200?text=No+Image";
+
 // Supabase 뉴스 데이터를 화면 표시 형식으로 변환하는 함수
 function convertNewsToDisplayFormat(news: NewsFromSupabase): DisplayNews {
   return {
     id: news.id, // id 포함
-    image: news.image_url || "https://source.unsplash.com/random/200x200",
+    image: news.image_url || DEFAULT_PLACEHOLDER_IMAGE,
     headline: news.headline,
     timestamp: formatTimestamp(news.created_at),
   };
@@ -432,10 +435,13 @@ export default function Home() {
                                     className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
                                     loading="lazy"
                                     onError={(e) => {
-                                      // 이미지 로드 실패 시 대체 이미지로 변경
+                                      // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
                                       const target =
                                         e.target as HTMLImageElement;
-                                      target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
+                                      // 이미 대체 이미지인 경우 더 이상 변경하지 않음
+                                      if (!target.src.includes('placeholder.com')) {
+                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                      }
                                     }}
                                   />
                                 </div>
@@ -527,9 +533,13 @@ export default function Home() {
                                     className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
                                     loading="lazy"
                                     onError={(e) => {
+                                      // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
                                       const target =
                                         e.target as HTMLImageElement;
-                                      target.src = `https://source.unsplash.com/random/200x200?${Date.now()}`;
+                                      // 이미 대체 이미지인 경우 더 이상 변경하지 않음
+                                      if (!target.src.includes('placeholder.com')) {
+                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                                      }
                                     }}
                                   />
                                 </div>

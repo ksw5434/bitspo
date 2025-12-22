@@ -1681,7 +1681,14 @@ export default function NewsPage() {
               <p className="text-sm font-medium mb-4">
                 뉴스에 대한 의견과 질문을 자유롭게 남겨보세요!
               </p>
-              <Button variant="outline" className="mb-6">
+              <Button
+                variant="outline"
+                className="mb-6"
+                onClick={() => {
+                  // 뉴스 ID를 쿼리 파라미터로 전달하여 커뮤니티 글쓰기 페이지로 이동
+                  router.push(`/community/write?newsId=${newsId}`);
+                }}
+              >
                 이 뉴스로 커뮤니티 글쓰기
               </Button>
 
