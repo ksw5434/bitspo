@@ -27,20 +27,6 @@ const CATEGORIES = [
   "기타",
 ];
 
-// 인기 태그 옵션
-const POPULAR_TAGS = [
-  "BTC",
-  "ETH",
-  "SOL",
-  "DeFi",
-  "NFT",
-  "AI",
-  "거래소",
-  "뉴스",
-  "스테이킹",
-  "투자",
-];
-
 export default function CommunityWritePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,10 +46,66 @@ export default function CommunityWritePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
+  const [popularTags, setPopularTags] = useState<string[]>([]); // 데이터베이스에서 가져온 인기 태그 목록
+  const [isLoadingTags, setIsLoadingTags] = useState(false); // 태그 로딩 상태
   const [toastMessage, setToastMessage] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  // 데이터베이스에서 인기 태그 가져오기
+  const loadPopularTags = async () => {
+    if (!supabase) return;
+
+    try {
+      setIsLoadingTags(true);
+
+      // communities 테이블에서 모든 게시글의 태그 가져오기
+      const { data: communitiesData, error } = await supabase
+        .from("communities")
+        .select("tags")
+        .not("tags", "is", null); // tags가 null이 아닌 것만
+
+      if (error) {
+        console.error("태그 조회 오류:", error);
+        return;
+      }
+
+      if (!communitiesData || communitiesData.length === 0) {
+        setPopularTags([]);
+        return;
+      }
+
+      // 모든 태그를 하나의 배열로 합치기
+      const allTags: string[] = [];
+      communitiesData.forEach((item) => {
+        if (item.tags && Array.isArray(item.tags)) {
+          allTags.push(...item.tags);
+        }
+      });
+
+      // 태그 빈도수 계산
+      const tagCountMap = new Map<string, number>();
+      allTags.forEach((tag) => {
+        const trimmedTag = tag.trim();
+        if (trimmedTag) {
+          tagCountMap.set(trimmedTag, (tagCountMap.get(trimmedTag) || 0) + 1);
+        }
+      });
+
+      // 빈도수 기준으로 정렬하고 상위 50개 추출
+      const sortedTags = Array.from(tagCountMap.entries())
+        .sort((a, b) => b[1] - a[1]) // 빈도수 내림차순 정렬
+        .slice(0, 50) // 최대 50개만
+        .map(([tag]) => tag); // 태그 이름만 추출
+
+      setPopularTags(sortedTags);
+    } catch (error) {
+      console.error("태그 로드 오류:", error);
+    } finally {
+      setIsLoadingTags(false);
+    }
+  };
 
   // 로그인 확인 및 뉴스 데이터 로드
   useEffect(() => {
@@ -84,6 +126,9 @@ export default function CommunityWritePage() {
 
       setIsAuthenticated(true);
       setCurrentUser(user);
+
+      // 인기 태그 로드
+      await loadPopularTags();
 
       // 뉴스 ID가 쿼리 파라미터에 있는 경우 뉴스 데이터 로드
       const newsId = searchParams.get("newsId");
@@ -289,16 +334,30 @@ export default function CommunityWritePage() {
   // 커스텀 태그 추가
   const handleCustomTagAdd = (tag: string) => {
     const trimmedTag = tag.trim();
-    if (
-      trimmedTag &&
-      !formData.tags.includes(trimmedTag) &&
-      trimmedTag.length <= 20
-    ) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, trimmedTag],
-      }));
+
+    // 빈 태그 체크
+    if (!trimmedTag) {
+      showToast("태그를 입력해주세요.", "error");
+      return;
     }
+
+    // 길이 제한 체크
+    if (trimmedTag.length > 20) {
+      showToast("태그는 최대 20자까지 입력할 수 있습니다.", "error");
+      return;
+    }
+
+    // 중복 체크
+    if (formData.tags.includes(trimmedTag)) {
+      showToast("이미 추가된 태그입니다.", "error");
+      return;
+    }
+
+    // 태그 추가
+    setFormData((prev) => ({
+      ...prev,
+      tags: [...prev.tags, trimmedTag],
+    }));
   };
 
   // 폼 제출
@@ -442,31 +501,45 @@ export default function CommunityWritePage() {
               {/* 태그 */}
               <div>
                 <label className="block text-sm font-medium mb-2">태그</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {POPULAR_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => handleTagToggle(tag)}
-                      className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                        formData.tags.includes(tag)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
+                {isLoadingTags ? (
+                  <div className="text-sm text-muted-foreground mb-2">
+                    태그를 불러오는 중...
+                  </div>
+                ) : popularTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {popularTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => handleTagToggle(tag)}
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                          formData.tags.includes(tag)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground mb-2">
+                    아직 등록된 태그가 없습니다.
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Input
-                    placeholder="커스텀 태그 입력 (엔터로 추가)"
+                    placeholder="태그 입력 후 엔터로 추가 (최대 20자)"
                     className="text-sm"
+                    maxLength={20}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        handleCustomTagAdd(e.currentTarget.value);
-                        e.currentTarget.value = "";
+                        const inputValue = e.currentTarget.value.trim();
+                        if (inputValue) {
+                          handleCustomTagAdd(inputValue);
+                          e.currentTarget.value = "";
+                        }
                       }
                     }}
                   />

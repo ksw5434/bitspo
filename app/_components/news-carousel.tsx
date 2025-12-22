@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import useEmblaCarousel from "embla-carousel-react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
@@ -8,11 +9,14 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // 기본 placeholder 이미지 URL (안정적인 서비스 사용)
-const DEFAULT_PLACEHOLDER_IMAGE = "https://via.placeholder.com/800x600?text=No+Image";
-const DEFAULT_PLACEHOLDER_IMAGE_SMALL = "https://via.placeholder.com/400x300?text=No+Image";
+const DEFAULT_PLACEHOLDER_IMAGE =
+  "https://via.placeholder.com/800x600?text=No+Image";
+const DEFAULT_PLACEHOLDER_IMAGE_SMALL =
+  "https://via.placeholder.com/400x300?text=No+Image";
 
 // 뉴스 아이템 타입 정의
 type NewsItem = {
+  id?: string; // 뉴스 ID (Supabase에서 가져온 경우 포함)
   image: string;
   headline: string;
   timestamp: string;
@@ -127,86 +131,97 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
               <div className="space-y-4">
                 {/* 첫 번째 기사: 큰 이미지 */}
                 {group[0] && (
-                  <Card className="overflow-hidden py-0 relative group cursor-pointer hover:shadow-lg transition-shadow">
-                    <div className="relative h-80">
-                      {/* 배경 이미지 */}
-                      <img
-                        src={group[0].image}
-                        alt={group[0].headline}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                        onError={(e) => {
-                          // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
-                          const target = e.target as HTMLImageElement;
-                          // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                          if (!target.src.includes('placeholder.com')) {
-                            target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                          }
-                        }}
-                      />
-                      {/* 반투명 오버레이 */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      {/* 블러 배경 레이어 */}
-                      <div
-                        className="absolute bottom-0 left-0 right-0 h-28 z-0"
-                        style={{
-                          background: "rgba(0, 0, 0, 0.4)",
-                          backdropFilter: "blur(4px)",
-                          WebkitBackdropFilter: "blur(4px)", // Safari 지원
-                        }}
-                      />
-                      {/* 헤드라인과 타임스탬프 - 블러 위에 선명하게 표시 */}
-                      <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
-                        <h3 className="text-2xl font-bold mb-2 line-clamp-2">
-                          {group[0].headline}
-                        </h3>
-                        <p className="text-sm text-gray-300">
-                          {group[0].timestamp}
-                        </p>
+                  <Link
+                    href={group[0].id ? `/news/${group[0].id}` : "#"}
+                    className="block"
+                  >
+                    <Card className="overflow-hidden py-0 relative group cursor-pointer hover:shadow-lg transition-shadow">
+                      <div className="relative h-80">
+                        {/* 배경 이미지 */}
+                        <img
+                          src={group[0].image}
+                          alt={group[0].headline}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => {
+                            // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
+                            const target = e.target as HTMLImageElement;
+                            // 이미 대체 이미지인 경우 더 이상 변경하지 않음
+                            if (!target.src.includes("placeholder.com")) {
+                              target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                            }
+                          }}
+                        />
+                        {/* 반투명 오버레이 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        {/* 블러 배경 레이어 */}
+                        <div
+                          className="absolute bottom-0 left-0 right-0 h-28 z-0"
+                          style={{
+                            background: "rgba(0, 0, 0, 0.4)",
+                            backdropFilter: "blur(4px)",
+                            WebkitBackdropFilter: "blur(4px)", // Safari 지원
+                          }}
+                        />
+                        {/* 헤드라인과 타임스탬프 - 블러 위에 선명하게 표시 */}
+                        <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
+                          <h3 className="text-2xl font-bold mb-2 line-clamp-2">
+                            {group[0].headline}
+                          </h3>
+                          <p className="text-sm text-gray-300">
+                            {group[0].timestamp}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </Link>
                 )}
 
                 {/* 두 번째, 세 번째 기사: 작은 이미지 가로 배치 */}
                 {group.length > 1 && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {group.slice(1).map((news, index) => (
-                      <Card
+                      <Link
                         key={index + 1}
-                        className="overflow-hidden py-0 group cursor-pointer hover:shadow-md transition-shadow"
+                        href={news.id ? `/news/${news.id}` : "#"}
+                        className="block"
                       >
-                        <CardContent className="p-0">
-                          <div className="flex flex-col">
-                            {/* 썸네일 이미지 */}
-                            <div className="relative h-40 overflow-hidden">
-                              <img
-                                src={news.image}
-                                alt={news.headline}
-                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                loading="lazy"
-                                onError={(e) => {
-                                  // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
-                                  const target = e.target as HTMLImageElement;
-                                  // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                  if (!target.src.includes('placeholder.com')) {
-                                    target.src = DEFAULT_PLACEHOLDER_IMAGE_SMALL;
-                                  }
-                                }}
-                              />
+                        <Card className="overflow-hidden py-0 group cursor-pointer hover:shadow-md transition-shadow">
+                          <CardContent className="p-0">
+                            <div className="flex flex-col">
+                              {/* 썸네일 이미지 */}
+                              <div className="relative h-40 overflow-hidden">
+                                <img
+                                  src={news.image}
+                                  alt={news.headline}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
+                                    const target = e.target as HTMLImageElement;
+                                    // 이미 대체 이미지인 경우 더 이상 변경하지 않음
+                                    if (
+                                      !target.src.includes("placeholder.com")
+                                    ) {
+                                      target.src =
+                                        DEFAULT_PLACEHOLDER_IMAGE_SMALL;
+                                    }
+                                  }}
+                                />
+                              </div>
+                              {/* 헤드라인, 타임스탬프 */}
+                              <div className="p-4">
+                                <h4 className="text-base font-semibold line-clamp-2 mb-2">
+                                  {news.headline}
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {news.timestamp}
+                                </p>
+                              </div>
                             </div>
-                            {/* 헤드라인, 타임스탬프 */}
-                            <div className="p-4">
-                              <h4 className="text-base font-semibold line-clamp-2 mb-2">
-                                {news.headline}
-                              </h4>
-                              <p className="text-xs text-muted-foreground">
-                                {news.timestamp}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+                      </Link>
                     ))}
                   </div>
                 )}

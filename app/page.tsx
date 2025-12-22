@@ -67,7 +67,8 @@ function formatTimestamp(createdAt: string): string {
 }
 
 // 기본 placeholder 이미지 URL (안정적인 서비스 사용)
-const DEFAULT_PLACEHOLDER_IMAGE = "https://via.placeholder.com/200x200?text=No+Image";
+const DEFAULT_PLACEHOLDER_IMAGE =
+  "https://via.placeholder.com/200x200?text=No+Image";
 
 // Supabase 뉴스 데이터를 화면 표시 형식으로 변환하는 함수
 function convertNewsToDisplayFormat(news: NewsFromSupabase): DisplayNews {
@@ -125,16 +126,27 @@ export default function Home() {
   const [isLoadingNews, setIsLoadingNews] = useState(true); // 뉴스 데이터 로딩 상태
   const [newsError, setNewsError] = useState<string | null>(null); // 뉴스 로드 에러 상태
 
+  // Supabase 뉴스를 화면 표시 형식으로 변환
+  const displayNewsList = useMemo(() => {
+    if (supabaseNews.length > 0) {
+      return supabaseNews.map(convertNewsToDisplayFormat);
+    }
+    // Supabase 데이터가 없으면 기존 정적 데이터 사용
+    return mainPickNews;
+  }, [supabaseNews]);
+
+  // 뉴스 슬라이더용 그룹 생성 (3개씩 묶음)
   const newsGroups = useMemo(() => {
-    const groups: Array<typeof mainPickNews> = [];
-    for (let i = 0; i < mainPickNews.length; i += 3) {
-      const group = mainPickNews.slice(i, i + 3);
+    const groups: Array<DisplayNews[]> = [];
+    // displayNewsList를 3개씩 그룹화
+    for (let i = 0; i < displayNewsList.length; i += 3) {
+      const group = displayNewsList.slice(i, i + 3);
       if (group.length > 0) {
         groups.push(group);
       }
     }
     return groups;
-  }, []);
+  }, [displayNewsList]);
 
   // 무한 스크롤을 위한 상태 관리
   const [displayedCountAll, setDisplayedCountAll] = useState(10); // 전체 탭에서 표시할 뉴스 개수
@@ -181,15 +193,6 @@ export default function Home() {
 
   // 한 번에 추가로 로드할 뉴스 개수
   const ITEMS_PER_LOAD = 10;
-
-  // Supabase 뉴스를 화면 표시 형식으로 변환
-  const displayNewsList = useMemo(() => {
-    if (supabaseNews.length > 0) {
-      return supabaseNews.map(convertNewsToDisplayFormat);
-    }
-    // Supabase 데이터가 없으면 기존 정적 데이터 사용
-    return mainPickNews;
-  }, [supabaseNews]);
 
   // 무한 스크롤 로직 - 전체 탭
   useEffect(() => {
@@ -439,7 +442,9 @@ export default function Home() {
                                       const target =
                                         e.target as HTMLImageElement;
                                       // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                      if (!target.src.includes('placeholder.com')) {
+                                      if (
+                                        !target.src.includes("placeholder.com")
+                                      ) {
                                         target.src = DEFAULT_PLACEHOLDER_IMAGE;
                                       }
                                     }}
@@ -537,7 +542,9 @@ export default function Home() {
                                       const target =
                                         e.target as HTMLImageElement;
                                       // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                      if (!target.src.includes('placeholder.com')) {
+                                      if (
+                                        !target.src.includes("placeholder.com")
+                                      ) {
                                         target.src = DEFAULT_PLACEHOLDER_IMAGE;
                                       }
                                     }}

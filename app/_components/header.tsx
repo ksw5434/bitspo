@@ -308,6 +308,15 @@ export default function Header() {
                           뉴스
                         </Link>
                       </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/dashboard/community"
+                          className="flex items-center gap-2"
+                        >
+                          <Newspaper className="w-4 h-4" />
+                          커뮤니티
+                        </Link>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={handleLogout}
