@@ -59,6 +59,7 @@ export default function CommunityPage() {
   const [displayedCountDiscussion, setDisplayedCountDiscussion] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true); // 초기 데이터 로딩 상태
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // 로그인 상태
 
   // 실제 데이터 상태
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
@@ -71,6 +72,36 @@ export default function CommunityPage() {
   const observerTargetDiscussionRef = useRef<HTMLDivElement>(null);
 
   const ITEMS_PER_LOAD = 10;
+
+  // 사용자 인증 상태 확인
+  useEffect(() => {
+    if (!supabase) return;
+
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        setIsAuthenticated(!!user);
+      } catch (error) {
+        console.error("인증 상태 확인 오류:", error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+
+    // 인증 상태 변경 리스너 설정
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   // communities 테이블에서 데이터 가져오기
   useEffect(() => {
@@ -565,12 +596,14 @@ export default function CommunityPage() {
                   {/* 탭 아래 구분선 */}
                   <div className="border-t border-gray-300/50 -translate-y-2.5"></div>
 
-                  {/* 게시물 작성 버튼 */}
-                  <div className="mt-4 flex justify-end">
-                    <Button asChild>
-                      <Link href="/community/write">글쓰기</Link>
-                    </Button>
-                  </div>
+                  {/* 게시물 작성 버튼 - 로그인한 유저만 표시 */}
+                  {isAuthenticated && (
+                    <div className="mt-4 flex justify-end">
+                      <Button asChild>
+                        <Link href="/community/write">글쓰기</Link>
+                      </Button>
+                    </div>
+                  )}
 
                   {/* 게시물 목록 - 최근 탭 */}
                   <TabsContent value="recent" className="mt-6">

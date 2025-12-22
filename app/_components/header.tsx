@@ -217,23 +217,6 @@ export default function Header() {
                 {menu.label}
               </Link>
             ))}
-            {/* 비로그인 상태일 때 로그인/회원가입 메뉴 표시 */}
-            {mounted && !isLoading && !user && (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="text-md font-medium hover:text-muted-foreground transition-colors"
-                >
-                  로그인
-                </Link>
-                <Link
-                  href="/auth/signup"
-                  className="text-md font-medium hover:text-muted-foreground transition-colors"
-                >
-                  회원가입
-                </Link>
-              </>
-            )}
           </div>
           {/* 오른쪽 메뉴 */}
           <div className="flex items-center gap-4">
