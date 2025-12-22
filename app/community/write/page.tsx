@@ -325,6 +325,9 @@ export default function CommunityWritePage() {
       setIsLoading(true);
 
       // 게시글 작성
+      // 이미지 URL이 없거나 빈 문자열인 경우 null로 처리 (선택사항)
+      const imageUrl = formData.image_url?.trim() || null;
+
       const { data, error } = await supabase
         .from("communities")
         .insert({
@@ -333,7 +336,7 @@ export default function CommunityWritePage() {
           content: formData.content.trim(),
           category: formData.category || null,
           tags: formData.tags.length > 0 ? formData.tags : [],
-          image_url: formData.image_url || null,
+          image_url: imageUrl,
         })
         .select()
         .single();
@@ -492,7 +495,10 @@ export default function CommunityWritePage() {
               {/* 이미지 */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  대표 이미지
+                  대표 이미지{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (선택사항)
+                  </span>
                 </label>
                 {imagePreview ? (
                   <div className="relative w-full max-w-md">
@@ -538,7 +544,7 @@ export default function CommunityWritePage() {
                       <span className="text-sm text-muted-foreground">
                         {isUploadingImage
                           ? "업로드 중..."
-                          : "이미지를 클릭하여 업로드"}
+                          : "이미지를 클릭하여 업로드 (선택사항)"}
                       </span>
                     </label>
                   </div>

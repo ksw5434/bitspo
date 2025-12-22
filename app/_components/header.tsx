@@ -198,9 +198,9 @@ export default function Header() {
   return (
     <nav
       ref={navRef}
-      className="flex  bg-card/50 flex-col backdrop-blur border-b border-border fixed top-0 left-0 right-0 z-50"
+      className="flex bg-card/50 flex-col backdrop-blur border-b border-border fixed top-0 left-0 right-0 z-50"
     >
-      <div className="container w-full">
+      <div className="container w-full px-2">
         {/* 상단 헤더: 검색과 햄버거/프로필 버튼 */}
         <Link href="/" className="flex items-center py-2">
           <img src="/logo_w.png" alt="로고" className="h-12 w-auto" />

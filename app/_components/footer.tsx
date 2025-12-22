@@ -6,7 +6,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
   return (
     <footer className="bg-muted border-t border-border">
-      <div className="container mx-auto px-1 py-8">
+      <div className="container mx-auto px-2 py-8">
         {/* 상단: 로고 및 주요 링크 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           {/* 로고 */}
