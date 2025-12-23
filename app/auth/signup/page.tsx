@@ -228,7 +228,7 @@ export default function SignupPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-[#FEE500] hover:bg-[#FDD835] text-[#000000] border-[#FEE500] font-medium shadow-sm"
+              className="w-full !bg-[#f6de05] hover:!bg-[#e5cc04] dark:!bg-[#f6de05] dark:hover:!bg-[#e5cc04] text-[#000000] dark:text-[#000000] border-[#f6de05] dark:border-[#f6de05] font-medium shadow-sm"
               onClick={handleKakaoLogin}
               disabled={isLoading}
             >
@@ -247,7 +247,7 @@ export default function SignupPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-white hover:bg-gray-50 text-gray-700 border-gray-300 font-medium"
+              className="w-full bg-white hover:bg-gray-50 text-gray-200 border-gray-300 font-medium"
               onClick={handleGoogleLogin}
               disabled={isLoading}
             >
@@ -293,7 +293,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label
                 htmlFor="name"
-                className="text-sm font-medium text-foreground"
+                className="text-xs px-2 block font-medium text-foreground"
               >
                 이름
               </label>
@@ -314,7 +314,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="text-sm font-medium text-foreground"
+                className="text-xs px-2 block font-medium text-foreground"
               >
                 이메일
               </label>
@@ -335,7 +335,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label
                 htmlFor="password"
-                className="text-sm font-medium text-foreground"
+                className="text-xs px-2 block font-medium text-foreground"
               >
                 비밀번호
               </label>
@@ -356,7 +356,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <label
                 htmlFor="confirmPassword"
-                className="text-sm font-medium text-foreground"
+                className="text-xs px-2 block font-medium text-foreground"
               >
                 비밀번호 확인
               </label>
