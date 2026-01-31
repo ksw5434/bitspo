@@ -77,21 +77,21 @@ export default function Home() {
   const getFirstImageFromContent = (content: string | null): string | null => {
     if (!content) return null;
 
-    // HTML에서 첫 번째 img 태그의 src 속성 추출
-    const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-    if (imgMatch && imgMatch[1]) {
-      return imgMatch[1];
-    }
-
-    // TipTap JSON 형식인 경우 처리
+    // TipTap JSON 형식인 경우 우선 처리 (더 정확함)
     try {
       const jsonContent = JSON.parse(content);
       if (jsonContent && jsonContent.content) {
         const findImage = (nodes: any[]): string | null => {
           for (const node of nodes) {
+            // 이미지 노드인 경우 src 속성 확인
             if (node.type === "image" && node.attrs?.src) {
-              return node.attrs.src;
+              const imageSrc = node.attrs.src;
+              // 유효한 이미지 URL인지 확인 (빈 문자열이나 null 제외)
+              if (imageSrc && imageSrc.trim() !== "") {
+                return imageSrc;
+              }
             }
+            // 하위 노드 재귀 탐색
             if (node.content && Array.isArray(node.content)) {
               const found = findImage(node.content);
               if (found) return found;
@@ -99,10 +99,30 @@ export default function Home() {
           }
           return null;
         };
-        return findImage(jsonContent.content);
+        const imageFromJson = findImage(jsonContent.content);
+        if (imageFromJson) return imageFromJson;
       }
     } catch (e) {
-      // JSON 파싱 실패 시 HTML로 처리 (이미 위에서 처리됨)
+      // JSON 파싱 실패 시 HTML로 처리
+    }
+
+    // HTML에서 첫 번째 img 태그의 src 속성 추출
+    // 다양한 속성 지원: src, data-src, data-lazy-src 등
+    const imgPatterns = [
+      /<img[^>]+src=["']([^"']+)["'][^>]*>/i,
+      /<img[^>]+data-src=["']([^"']+)["'][^>]*>/i,
+      /<img[^>]+data-lazy-src=["']([^"']+)["'][^>]*>/i,
+    ];
+
+    for (const pattern of imgPatterns) {
+      const imgMatch = content.match(pattern);
+      if (imgMatch && imgMatch[1]) {
+        const imageSrc = imgMatch[1];
+        // 유효한 이미지 URL인지 확인
+        if (imageSrc && imageSrc.trim() !== "" && !imageSrc.startsWith("data:")) {
+          return imageSrc;
+        }
+      }
     }
 
     return null;
@@ -180,7 +200,9 @@ export default function Home() {
           setAllNews([]);
         } else {
           const transformedAllNews: NewsItem[] = (allNewsData || []).map((news) => {
+            // 본문에서 첫 번째 이미지 추출 (우선순위 1)
             const firstImageFromContent = getFirstImageFromContent(news.content);
+            // 본문에 이미지가 없을 때만 image_url 또는 placeholder 사용
             const thumbnailImage =
               firstImageFromContent ||
               news.image_url ||
@@ -212,7 +234,9 @@ export default function Home() {
             // PICK 뉴스 데이터 변환
             const pickNewsData = pickResult.data || [];
             const transformedPickNews: NewsItem[] = pickNewsData.map((news) => {
+              // 본문에서 첫 번째 이미지 추출 (우선순위 1)
               const firstImageFromContent = getFirstImageFromContent(news.content);
+              // 본문에 이미지가 없을 때만 image_url 또는 placeholder 사용
               const thumbnailImage =
                 firstImageFromContent ||
                 news.image_url ||
