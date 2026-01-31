@@ -86,7 +86,8 @@ export async function updateProfile(
 
   // 각 필드가 정의되어 있을 때만 추가
   if (updates.name !== undefined) {
-    updateData.name = updates.name;
+    // 빈 문자열은 null로 변환
+    updateData.name = updates.name.trim() || null;
   }
   if (updates.avatar_url !== undefined) {
     updateData.avatar_url = updates.avatar_url;

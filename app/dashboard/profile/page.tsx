@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Button } from "@/app/_components/ui/button";
 import { AvatarUpload } from "./_components/avatar-upload";
 import { ProfileEditForm } from "./_components/profile-edit-form";
+import { BasicInfoEdit } from "./_components/basic-info-edit";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -80,15 +81,8 @@ export default async function ProfilePage() {
 
             {/* 사용자 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  이름
-                </label>
-                <div className="flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-base">{profile?.name || "이름 없음"}</p>
-                </div>
-              </div>
+              {/* 이름 편집 가능 */}
+              <BasicInfoEdit currentName={profile?.name || null} />
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
