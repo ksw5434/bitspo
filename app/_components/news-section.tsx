@@ -1,6 +1,6 @@
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import { NewsImage } from "@/app/dashboard/news/news-image";
+import { NewsImage } from "@/app/news/news-image";
 
 // 랭킹 뉴스 아이템 타입 정의
 interface RankingNewsItem {

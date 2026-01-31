@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "./_components/ui/card";
 import {
@@ -9,284 +9,246 @@ import {
   TabsList,
   TabsTrigger,
 } from "./_components/ui/tabs";
-import { mainPickNews, rankingNews, deepDiveNews } from "@/lib/main-data";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { rankingNews, deepDiveNews } from "@/lib/main-data";
 import { NewsCarousel } from "./_components/news-carousel";
 import { NewsSection } from "./_components/news-section";
 import { DeepDiveSection } from "./_components/deep-dive-section";
 import { createClient } from "@/lib/supabase/client";
+import { NewsImage } from "./news/news-image";
 
-// Supabase에서 가져온 뉴스 타입 정의
-interface NewsFromSupabase {
+// 뉴스 아이템 타입 정의
+type NewsItem = {
   id: string;
-  headline: string;
-  content: string | null;
-  image_url: string | null;
-  author_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// 화면에 표시할 뉴스 타입 (기존 형식과 호환)
-interface DisplayNews {
-  id?: string; // Supabase에서 가져온 경우 id 포함
   image: string;
   headline: string;
   timestamp: string;
-}
-
-// 타임스탬프를 "19분 전" 형식으로 변환하는 함수
-function formatTimestamp(createdAt: string): string {
-  try {
-    const now = new Date();
-    const created = new Date(createdAt);
-    const diffInMs = now.getTime() - created.getTime();
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    const diffInDays = Math.floor(diffInHours / 24);
-
-    if (diffInMinutes < 1) {
-      return "방금 전";
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes}분 전`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours}시간 전`;
-    } else if (diffInDays < 7) {
-      return `${diffInDays}일 전`;
-    } else {
-      // 7일 이상이면 날짜 형식으로 표시
-      const year = created.getFullYear();
-      const month = created.getMonth() + 1;
-      const day = created.getDate();
-      return `${year}. ${month}. ${day}.`;
-    }
-  } catch (error) {
-    console.error("타임스탬프 변환 오류:", error);
-    return "알 수 없음";
-  }
-}
-
-// 기본 placeholder 이미지 URL (안정적인 서비스 사용)
-const DEFAULT_PLACEHOLDER_IMAGE =
-  "https://via.placeholder.com/200x200?text=No+Image";
-
-// Supabase 뉴스 데이터를 화면 표시 형식으로 변환하는 함수
-function convertNewsToDisplayFormat(news: NewsFromSupabase): DisplayNews {
-  return {
-    id: news.id, // id 포함
-    image: news.image_url || DEFAULT_PLACEHOLDER_IMAGE,
-    headline: news.headline,
-    timestamp: formatTimestamp(news.created_at),
-  };
-}
-
-// 헤드라인에서 코인 태그 추출하는 유틸리티 함수
-function extractCoinTag(headline: string): string {
-  const coinKeywords: { [key: string]: string } = {
-    비트코인: "BTC",
-    BTC: "BTC",
-    솔라나: "SOL",
-    SOL: "SOL",
-    이더리움: "ETH",
-    ETH: "ETH",
-    도지코인: "DOGE",
-    DOGE: "DOGE",
-    바이낸스: "BNB",
-    BNB: "BNB",
-    리플: "XRP",
-    XRP: "XRP",
-    테더: "USDT",
-    USDT: "USDT",
-    카르다노: "ADA",
-    ADA: "ADA",
-    폴카닷: "DOT",
-    DOT: "DOT",
-    아발란체: "AVAX",
-    AVAX: "AVAX",
-    체인링크: "LINK",
-    LINK: "LINK",
-    펠로: "PEPE",
-    PEPE: "PEPE",
-  };
-
-  for (const [keyword, tag] of Object.entries(coinKeywords)) {
-    if (headline.includes(keyword)) {
-      return tag;
-    }
-  }
-  return "BTC"; // 기본값
-}
+};
 
 export default function Home() {
-  // Supabase 클라이언트 생성
-  const supabase = createClient();
-
-  // Supabase에서 가져온 뉴스 데이터 상태
-  const [supabaseNews, setSupabaseNews] = useState<NewsFromSupabase[]>([]);
-  const [isLoadingNews, setIsLoadingNews] = useState(true); // 뉴스 데이터 로딩 상태
-  const [newsError, setNewsError] = useState<string | null>(null); // 뉴스 로드 에러 상태
-
-  // Supabase 뉴스를 화면 표시 형식으로 변환
-  const displayNewsList = useMemo(() => {
-    if (supabaseNews.length > 0) {
-      return supabaseNews.map(convertNewsToDisplayFormat);
+  // Supabase 클라이언트 생성 (브라우저에서만)
+  const supabase = useMemo(() => {
+    if (typeof window === "undefined") {
+      return null;
     }
-    // Supabase 데이터가 없으면 기존 정적 데이터 사용
-    return mainPickNews;
-  }, [supabaseNews]);
+    return createClient();
+  }, []);
 
-  // 뉴스 슬라이더용 그룹 생성 (3개씩 묶음)
-  const newsGroups = useMemo(() => {
-    const groups: Array<DisplayNews[]> = [];
-    // displayNewsList를 3개씩 그룹화
-    for (let i = 0; i < displayNewsList.length; i += 3) {
-      const group = displayNewsList.slice(i, i + 3);
-      if (group.length > 0) {
-        groups.push(group);
+  // PICK 뉴스 데이터 상태
+  const [mainPickNews, setMainPickNews] = useState<NewsItem[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+
+  // 실시간 뉴스 데이터 상태 (전체 및 PICK)
+  const [allNews, setAllNews] = useState<NewsItem[]>([]);
+  const [pickNews, setPickNews] = useState<NewsItem[]>([]);
+  const [isLoadingRealtimeNews, setIsLoadingRealtimeNews] = useState(true);
+
+  // 날짜를 상대 시간으로 변환하는 함수 (예: "3시간 전", "1일 전")
+  const formatRelativeTime = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInMs = now.getTime() - date.getTime();
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+      if (diffInMinutes < 1) {
+        return "방금 전";
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes}분 전`;
+      } else if (diffInHours < 24) {
+        return `${diffInHours}시간 전`;
+      } else if (diffInDays < 7) {
+        return `${diffInDays}일 전`;
+      } else {
+        // 7일 이상이면 날짜 표시
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}. ${month}. ${day}.`;
       }
+    } catch (error) {
+      console.error("날짜 포맷팅 오류:", error);
+      return "날짜 불명";
     }
-    return groups;
-  }, [displayNewsList]);
+  };
 
-  // 무한 스크롤을 위한 상태 관리
-  const [displayedCountAll, setDisplayedCountAll] = useState(10); // 전체 탭에서 표시할 뉴스 개수
-  const [displayedCountPick, setDisplayedCountPick] = useState(10); // PICK 탭에서 표시할 뉴스 개수
-  const [activeTab, setActiveTab] = useState("all"); // 현재 활성화된 탭
-  const [isLoading, setIsLoading] = useState(false); // 무한 스크롤 로딩 상태
+  // 본문에서 첫 번째 이미지 URL 추출하는 함수
+  const getFirstImageFromContent = (content: string | null): string | null => {
+    if (!content) return null;
+
+    // HTML에서 첫 번째 img 태그의 src 속성 추출
+    const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1];
+    }
+
+    // TipTap JSON 형식인 경우 처리
+    try {
+      const jsonContent = JSON.parse(content);
+      if (jsonContent && jsonContent.content) {
+        const findImage = (nodes: any[]): string | null => {
+          for (const node of nodes) {
+            if (node.type === "image" && node.attrs?.src) {
+              return node.attrs.src;
+            }
+            if (node.content && Array.isArray(node.content)) {
+              const found = findImage(node.content);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        return findImage(jsonContent.content);
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 HTML로 처리 (이미 위에서 처리됨)
+    }
+
+    return null;
+  };
 
   // Supabase에서 뉴스 데이터 가져오기
   useEffect(() => {
-    const fetchNews = async () => {
+    if (!supabase) return;
+
+    const loadNews = async () => {
       try {
         setIsLoadingNews(true);
-        setNewsError(null);
 
-        // Supabase에서 뉴스 목록 조회 (최신순)
-        const { data: newsData, error: newsError } = await supabase
+        // 뉴스 목록 조회 (최신순, PICK 뉴스 우선)
+        // is_pick이 true인 뉴스 또는 최신 뉴스 중 상위 9개 가져오기
+        const { data: newsData, error } = await supabase
           .from("news")
           .select("*")
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(9); // PICK 뉴스는 최대 9개 (3개씩 3그룹)
 
-        if (newsError) {
-          console.error("뉴스 조회 오류:", newsError);
-          setNewsError("뉴스를 불러오는데 실패했습니다.");
-          // 에러가 발생해도 기존 정적 데이터를 사용할 수 있도록 에러만 설정
+        if (error) {
+          console.error("뉴스 로드 오류:", error);
+          // 에러 발생 시 빈 배열로 설정
+          setMainPickNews([]);
           return;
         }
 
-        // 데이터가 있으면 설정, 없으면 빈 배열
-        setSupabaseNews(newsData || []);
+        // Supabase 데이터를 NewsCarousel 형식으로 변환
+        const transformedNews: NewsItem[] = (newsData || []).map((news) => {
+          // 본문에서 첫 번째 이미지 추출 (우선순위: content 첫 이미지 > image_url > placeholder)
+          const firstImageFromContent = getFirstImageFromContent(news.content);
+          const thumbnailImage =
+            firstImageFromContent ||
+            news.image_url ||
+            "https://via.placeholder.com/800x600?text=No+Image";
+
+          return {
+            id: news.id,
+            image: thumbnailImage,
+            headline: news.headline || "제목 없음",
+            timestamp: formatRelativeTime(news.created_at),
+          };
+        });
+
+        setMainPickNews(transformedNews);
       } catch (error) {
         console.error("뉴스 로드 중 예외 발생:", error);
-        setNewsError("뉴스를 불러오는 중 오류가 발생했습니다.");
+        setMainPickNews([]);
       } finally {
         setIsLoadingNews(false);
       }
     };
 
-    fetchNews();
+    loadNews();
   }, [supabase]);
 
-  // IntersectionObserver를 위한 ref
-  const observerTargetAllRef = useRef<HTMLDivElement>(null);
-  const observerTargetPickRef = useRef<HTMLDivElement>(null);
-
-  // 한 번에 추가로 로드할 뉴스 개수
-  const ITEMS_PER_LOAD = 10;
-
-  // 무한 스크롤 로직 - 전체 탭
+  // 실시간 뉴스 데이터 가져오기 (전체 및 PICK)
   useEffect(() => {
-    const observerTarget = observerTargetAllRef.current;
-    if (!observerTarget || activeTab !== "all") return;
+    if (!supabase) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // 마지막 요소가 뷰포트에 들어왔고, 더 로드할 데이터가 있는 경우
-        if (
-          entries[0].isIntersecting &&
-          displayedCountAll < displayNewsList.length &&
-          !isLoading
-        ) {
-          setIsLoading(true);
-          // 약간의 지연을 주어 자연스러운 로딩 효과 제공
-          setTimeout(() => {
-            setDisplayedCountAll((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, displayNewsList.length)
-            );
-            setIsLoading(false);
-          }, 300);
+    const loadRealtimeNews = async () => {
+      try {
+        setIsLoadingRealtimeNews(true);
+
+        // 전체 뉴스 조회 (최신순, 제한 없음)
+        const { data: allNewsData, error: allError } = await supabase
+          .from("news")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        // 전체 뉴스 데이터 변환
+        if (allError) {
+          console.error("전체 뉴스 로드 오류:", allError);
+          setAllNews([]);
+        } else {
+          const transformedAllNews: NewsItem[] = (allNewsData || []).map((news) => {
+            const firstImageFromContent = getFirstImageFromContent(news.content);
+            const thumbnailImage =
+              firstImageFromContent ||
+              news.image_url ||
+              "https://via.placeholder.com/200x200?text=No+Image";
+
+            return {
+              id: news.id,
+              image: thumbnailImage,
+              headline: news.headline || "제목 없음",
+              timestamp: formatRelativeTime(news.created_at),
+            };
+          });
+          setAllNews(transformedAllNews);
         }
-      },
-      {
-        threshold: 0.1, // 요소가 10% 보이면 트리거
-        rootMargin: "100px", // 뷰포트 아래 100px 전에 미리 로드
-      }
-    );
 
-    observer.observe(observerTarget);
+        // PICK 뉴스 조회 (is_pick이 true인 뉴스, 최신순)
+        // is_pick 필드가 없을 수 있으므로 에러 처리
+        try {
+          const pickResult = await supabase
+            .from("news")
+            .select("*")
+            .eq("is_pick", true)
+            .order("created_at", { ascending: false });
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [displayedCountAll, activeTab, isLoading, displayNewsList.length]);
+          if (pickResult.error) {
+            console.error("PICK 뉴스 로드 오류:", pickResult.error);
+            setPickNews([]);
+          } else {
+            // PICK 뉴스 데이터 변환
+            const pickNewsData = pickResult.data || [];
+            const transformedPickNews: NewsItem[] = pickNewsData.map((news) => {
+              const firstImageFromContent = getFirstImageFromContent(news.content);
+              const thumbnailImage =
+                firstImageFromContent ||
+                news.image_url ||
+                "https://via.placeholder.com/200x200?text=No+Image";
 
-  // 무한 스크롤 로직 - PICK 탭
-  useEffect(() => {
-    const observerTarget = observerTargetPickRef.current;
-    if (!observerTarget || activeTab !== "pick") return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // 마지막 요소가 뷰포트에 들어왔고, 더 로드할 데이터가 있는 경우
-        if (
-          entries[0].isIntersecting &&
-          displayedCountPick < displayNewsList.length &&
-          !isLoading
-        ) {
-          setIsLoading(true);
-          // 약간의 지연을 주어 자연스러운 로딩 효과 제공
-          setTimeout(() => {
-            setDisplayedCountPick((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, displayNewsList.length)
-            );
-            setIsLoading(false);
-          }, 300);
+              return {
+                id: news.id,
+                image: thumbnailImage,
+                headline: news.headline || "제목 없음",
+                timestamp: formatRelativeTime(news.created_at),
+              };
+            });
+            setPickNews(transformedPickNews);
+          }
+        } catch (err) {
+          // is_pick 필드가 없는 경우 빈 배열로 처리
+          console.warn("PICK 뉴스 조회 실패 (is_pick 필드가 없을 수 있음):", err);
+          setPickNews([]);
         }
-      },
-      {
-        threshold: 0.1, // 요소가 10% 보이면 트리거
-        rootMargin: "100px", // 뷰포트 아래 100px 전에 미리 로드
+      } catch (error) {
+        console.error("실시간 뉴스 로드 중 예외 발생:", error);
+        setAllNews([]);
+        setPickNews([]);
+      } finally {
+        setIsLoadingRealtimeNews(false);
       }
-    );
-
-    observer.observe(observerTarget);
-
-    return () => {
-      observer.disconnect();
     };
-  }, [displayedCountPick, activeTab, isLoading, displayNewsList.length]);
 
-  // 탭 변경 핸들러
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-    // 탭 변경 시 로딩 상태 초기화
-    setIsLoading(false);
-  }, []);
+    loadRealtimeNews();
+  }, [supabase]);
 
-  // 표시할 뉴스 데이터 계산
-  const displayedNewsAll = useMemo(
-    () => displayNewsList.slice(0, displayedCountAll),
-    [displayNewsList, displayedCountAll]
-  );
-
-  const displayedNewsPick = useMemo(
-    () => displayNewsList.slice(0, displayedCountPick),
-    [displayNewsList, displayedCountPick]
-  );
-
-  // 더 로드할 데이터가 있는지 확인
-  const hasMoreAll = displayedCountAll < displayNewsList.length;
-  const hasMorePick = displayedCountPick < displayNewsList.length;
+  // mainPickNews를 3개씩 묶어서 newsGroups 생성
+  const newsGroups: NewsItem[][] = [];
+  for (let i = 0; i < mainPickNews.length; i += 3) {
+    newsGroups.push(mainPickNews.slice(i, i + 3));
+  }
 
   return (
     <div className="bg-muted py-4 ">
@@ -302,7 +264,17 @@ export default function Home() {
 
             {/* 뉴스 슬라이더 */}
             <Card className="overflow-hidden p-4 border-none outline-none shadow-none flex-1 flex flex-col">
-              <NewsCarousel newsGroups={newsGroups} />
+              {isLoadingNews ? (
+                <div className="flex items-center justify-center h-96">
+                  <p className="text-muted-foreground">뉴스를 불러오는 중...</p>
+                </div>
+              ) : newsGroups.length === 0 ? (
+                <div className="flex items-center justify-center h-96">
+                  <p className="text-muted-foreground">표시할 뉴스가 없습니다.</p>
+                </div>
+              ) : (
+                <NewsCarousel newsGroups={newsGroups} />
+              )}
             </Card>
           </div>
 
@@ -320,12 +292,7 @@ export default function Home() {
             {/* 헤더: 타이틀과 탭 */}
             <div className="mb-6">
               <h2 className="text-2xl font-semibold mb-4">실시간 뉴스</h2>
-              <Tabs
-                defaultValue="all"
-                value={activeTab}
-                onValueChange={handleTabChange}
-                className="w-full"
-              >
+              <Tabs defaultValue="all" className="w-full">
                 <TabsList className="bg-transparent py-0 px-1 h-auto gap-6">
                   <TabsTrigger
                     value="all"
@@ -364,212 +331,79 @@ export default function Home() {
                 </div>
                 {/* 뉴스 리스트 - 전체 탭 */}
                 <TabsContent value="all" className="mt-6">
-                  <div className="space-y-4">
-                    {/* 뉴스 로딩 중 표시 */}
-                    {isLoadingNews && (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="text-sm text-muted-foreground">
-                          뉴스를 불러오는 중...
-                        </div>
-                      </div>
-                    )}
-                    {/* 뉴스 로드 에러 표시 */}
-                    {newsError && !isLoadingNews && (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="text-sm text-red-500">{newsError}</div>
-                      </div>
-                    )}
-                    {/* 뉴스가 없을 때 표시 */}
-                    {!isLoadingNews &&
-                      !newsError &&
-                      displayedNewsAll.length === 0 && (
-                        <div className="flex justify-center items-center py-8">
-                          <div className="text-sm text-muted-foreground">
-                            표시할 뉴스가 없습니다.
-                          </div>
-                        </div>
-                      )}
-                    {/* 뉴스 리스트 표시 */}
-                    {displayedNewsAll.map((news, index) => {
-                      const coinTag = extractCoinTag(news.headline);
-                      // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
-                      const newsKey =
-                        (news as DisplayNews).id || `all-${index}`;
-                      // 뉴스 ID가 있으면 해당 ID로 라우팅, 없으면 index 사용
-                      const newsId =
-                        (news as DisplayNews).id || index.toString();
-
-                      return (
-                        <Link key={newsKey} href={`/news/${newsId}`}>
-                          <Card className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group">
+                  {isLoadingRealtimeNews ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">뉴스를 불러오는 중...</p>
+                    </div>
+                  ) : allNews.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">표시할 뉴스가 없습니다.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {allNews.map((news) => (
+                        <Link key={news.id} href={`/news/${news.id}`}>
+                          <Card className="hover:shadow-md transition-shadow cursor-pointer border-none shadow-none bg-transparent">
                             <CardContent className="p-0">
                               <div className="flex gap-4">
-                                {/* 왼쪽: 텍스트 영역 */}
-                                <div className="flex-1 py-4">
-                                  {/* 코인 태그 */}
-                                  <div className="mb-2">
-                                    <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
-                                      {coinTag}
-                                    </span>
-                                  </div>
-                                  {/* 헤드라인 */}
-                                  <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                {/* 썸네일 이미지 */}
+                                <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
+                                  <NewsImage src={news.image} alt={news.headline} />
+                                </div>
+                                {/* 제목과 시간 */}
+                                <div className="flex-1 flex flex-col justify-center min-w-0">
+                                  <h3 className="text-base font-semibold line-clamp-2 mb-2 text-foreground hover:text-primary transition-colors">
                                     {news.headline}
                                   </h3>
-                                  {/* 요약 텍스트 (헤드라인 일부 사용) */}
-                                  <p
-                                    className="text-sm text-muted-foreground mb-2 line-clamp-2 group-hover:text-muted-foreground/70 
-                            transition-colors duration-300"
-                                  >
-                                    {news.headline.length > 220
-                                      ? `${news.headline.substring(0, 220)}...`
-                                      : news.headline}
-                                  </p>
-                                  {/* 타임스탬프 */}
-                                  <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
+                                  <p className="text-sm text-muted-foreground">
                                     {news.timestamp}
                                   </p>
-                                </div>
-                                {/* 오른쪽: 이미지 */}
-                                <div className="flex-shrink-0 w-32 h-32">
-                                  <img
-                                    src={news.image}
-                                    alt={news.headline}
-                                    className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                      // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
-                                      const target =
-                                        e.target as HTMLImageElement;
-                                      // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                      if (
-                                        !target.src.includes("placeholder.com")
-                                      ) {
-                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                                      }
-                                    }}
-                                  />
                                 </div>
                               </div>
                             </CardContent>
                           </Card>
                         </Link>
-                      );
-                    })}
-                    {/* IntersectionObserver 타겟 요소 - 전체 탭 */}
-                    {hasMoreAll && (
-                      <div
-                        ref={observerTargetAllRef}
-                        className="flex justify-center items-center py-8"
-                      >
-                        {isLoading && (
-                          <div className="text-sm text-muted-foreground">
-                            로딩 중...
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
                 {/* 뉴스 리스트 - PICK 탭 */}
                 <TabsContent value="pick" className="mt-6">
-                  <div className="space-y-4">
-                    {/* 뉴스 로딩 중 표시 */}
-                    {isLoadingNews && (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="text-sm text-muted-foreground">
-                          뉴스를 불러오는 중...
-                        </div>
-                      </div>
-                    )}
-                    {/* 뉴스 로드 에러 표시 */}
-                    {newsError && !isLoadingNews && (
-                      <div className="flex justify-center items-center py-8">
-                        <div className="text-sm text-red-500">{newsError}</div>
-                      </div>
-                    )}
-                    {/* 뉴스가 없을 때 표시 */}
-                    {!isLoadingNews &&
-                      !newsError &&
-                      displayedNewsPick.length === 0 && (
-                        <div className="flex justify-center items-center py-8">
-                          <div className="text-sm text-muted-foreground">
-                            표시할 뉴스가 없습니다.
-                          </div>
-                        </div>
-                      )}
-                    {/* 뉴스 리스트 표시 */}
-                    {displayedNewsPick.map((news, index) => {
-                      const coinTag = extractCoinTag(news.headline);
-                      // Supabase에서 가져온 뉴스는 id를 사용, 없으면 index 사용
-                      const newsKey =
-                        (news as DisplayNews).id || `pick-${index}`;
-                      // 뉴스 ID가 있으면 해당 ID로 라우팅, 없으면 index 사용
-                      const newsId =
-                        (news as DisplayNews).id || index.toString();
-
-                      return (
-                        <Link key={newsKey} href={`/news/${newsId}`}>
-                          <Card className="overflow-hidden border-none py-0 px-1 shadow-none cursor-pointer group">
+                  {isLoadingRealtimeNews ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">뉴스를 불러오는 중...</p>
+                    </div>
+                  ) : pickNews.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">표시할 PICK 뉴스가 없습니다.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {pickNews.map((news) => (
+                        <Link key={news.id} href={`/news/${news.id}`}>
+                          <Card className="hover:shadow-md transition-shadow cursor-pointer border-none shadow-none bg-transparent">
                             <CardContent className="p-0">
                               <div className="flex gap-4">
-                                <div className="flex-1 py-4">
-                                  <div className="mb-2">
-                                    <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
-                                      {coinTag}
-                                    </span>
-                                  </div>
-                                  <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                                {/* 썸네일 이미지 */}
+                                <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
+                                  <NewsImage src={news.image} alt={news.headline} />
+                                </div>
+                                {/* 제목과 시간 */}
+                                <div className="flex-1 flex flex-col justify-center min-w-0">
+                                  <h3 className="text-base font-semibold line-clamp-2 mb-2 text-foreground hover:text-primary transition-colors">
                                     {news.headline}
                                   </h3>
-                                  <p className="text-sm text-gray-600 mb-2 group-hover:text-gray-500/50 transition-colors duration-300 line-clamp-2">
-                                    {news.headline.length > 50
-                                      ? `${news.headline.substring(0, 50)}...`
-                                      : news.headline}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/70 transition-colors duration-300">
+                                  <p className="text-sm text-muted-foreground">
                                     {news.timestamp}
                                   </p>
-                                </div>
-                                <div className="flex-shrink-0 w-32 h-32">
-                                  <img
-                                    src={news.image}
-                                    alt={news.headline}
-                                    className="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                      // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
-                                      const target =
-                                        e.target as HTMLImageElement;
-                                      // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                      if (
-                                        !target.src.includes("placeholder.com")
-                                      ) {
-                                        target.src = DEFAULT_PLACEHOLDER_IMAGE;
-                                      }
-                                    }}
-                                  />
                                 </div>
                               </div>
                             </CardContent>
                           </Card>
                         </Link>
-                      );
-                    })}
-                    {/* IntersectionObserver 타겟 요소 - PICK 탭 */}
-                    {hasMorePick && (
-                      <div
-                        ref={observerTargetPickRef}
-                        className="flex justify-center items-center py-8"
-                      >
-                        {isLoading && (
-                          <div className="text-sm text-muted-foreground">
-                            로딩 중...
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>

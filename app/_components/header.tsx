@@ -65,7 +65,7 @@ export default function Header() {
       const height = navRef.current.offsetHeight;
       document.documentElement.style.setProperty(
         "--navigation-height",
-        `${height}px`
+        `${height}px`,
       );
     }
   }, []);
@@ -300,17 +300,14 @@ export default function Header() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link
-                          href="/dashboard/news"
-                          className="flex items-center gap-2"
-                        >
+                        <Link href="/news" className="flex items-center gap-2">
                           <Newspaper className="w-4 h-4" />
                           뉴스
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link
-                          href="/dashboard/community"
+                          href="/community"
                           className="flex items-center gap-2"
                         >
                           <Newspaper className="w-4 h-4" />

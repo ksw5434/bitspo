@@ -105,17 +105,25 @@ export default function CommunityPage() {
 
   // communities 테이블에서 데이터 가져오기
   useEffect(() => {
-    // Supabase 클라이언트가 없으면 실행하지 않음
-    if (!supabase) return;
+    // Supabase 클라이언트가 없으면 로딩 상태만 해제하고 종료
+    if (!supabase) {
+      setIsInitialLoading(false);
+      return;
+    }
+
+    let isMounted = true; // 컴포넌트 마운트 상태 추적
 
     const fetchPosts = async () => {
       try {
+        if (!isMounted) return;
         setIsInitialLoading(true);
 
         // 라우트 전환 시 상태 초기화
-        setRecentPosts([]);
-        setPopularPosts([]);
-        setDiscussionPosts([]);
+        if (isMounted) {
+          setRecentPosts([]);
+          setPopularPosts([]);
+          setDiscussionPosts([]);
+        }
 
         // 헬퍼 함수: 게시물 데이터를 Post 타입으로 변환
         const transformPosts = (
@@ -123,7 +131,7 @@ export default function CommunityPage() {
           profilesMap: Map<
             string,
             { name: string | null; avatar_url: string | null }
-          >
+          >,
         ): Post[] => {
           return communitiesData.map((item: any) => {
             const profile = profilesMap.get(item.user_id);
@@ -185,7 +193,7 @@ export default function CommunityPage() {
             if (profilesError) {
               console.warn(
                 "프로필 조회 오류 (게시물은 표시됨):",
-                profilesError
+                profilesError,
               );
             } else if (profilesData) {
               profilesData.forEach((profile) => {
@@ -199,11 +207,15 @@ export default function CommunityPage() {
 
           const transformedRecentPosts = transformPosts(
             recentData,
-            profilesMap
+            profilesMap,
           );
-          setRecentPosts(transformedRecentPosts);
+          if (isMounted) {
+            setRecentPosts(transformedRecentPosts);
+          }
         } else {
-          setRecentPosts([]);
+          if (isMounted) {
+            setRecentPosts([]);
+          }
         }
 
         // 인기 게시물 가져오기 (like_count 기준 내림차순)
@@ -239,7 +251,7 @@ export default function CommunityPage() {
             if (profilesError) {
               console.warn(
                 "프로필 조회 오류 (게시물은 표시됨):",
-                profilesError
+                profilesError,
               );
             } else if (profilesData) {
               profilesData.forEach((profile) => {
@@ -253,11 +265,15 @@ export default function CommunityPage() {
 
           const transformedPopularPosts = transformPosts(
             popularData,
-            profilesMap
+            profilesMap,
           );
-          setPopularPosts(transformedPopularPosts);
+          if (isMounted) {
+            setPopularPosts(transformedPopularPosts);
+          }
         } else {
-          setPopularPosts([]);
+          if (isMounted) {
+            setPopularPosts([]);
+          }
         }
 
         // 토론 게시물 가져오기 (comment_count 기준 내림차순)
@@ -295,7 +311,7 @@ export default function CommunityPage() {
             if (profilesError) {
               console.warn(
                 "프로필 조회 오류 (게시물은 표시됨):",
-                profilesError
+                profilesError,
               );
             } else if (profilesData) {
               profilesData.forEach((profile) => {
@@ -309,20 +325,28 @@ export default function CommunityPage() {
 
           const transformedDiscussionPosts = transformPosts(
             discussionData,
-            profilesMap
+            profilesMap,
           );
-          setDiscussionPosts(transformedDiscussionPosts);
+          if (isMounted) {
+            setDiscussionPosts(transformedDiscussionPosts);
+          }
         } else {
-          setDiscussionPosts([]);
+          if (isMounted) {
+            setDiscussionPosts([]);
+          }
         }
       } catch (error) {
         console.error("게시물 데이터 로드 오류:", error);
         // 예외 발생 시에도 빈 배열 설정
-        setRecentPosts([]);
-        setPopularPosts([]);
-        setDiscussionPosts([]);
+        if (isMounted) {
+          setRecentPosts([]);
+          setPopularPosts([]);
+          setDiscussionPosts([]);
+        }
       } finally {
-        setIsInitialLoading(false);
+        if (isMounted) {
+          setIsInitialLoading(false);
+        }
       }
     };
 
@@ -330,7 +354,7 @@ export default function CommunityPage() {
 
     // cleanup 함수: 컴포넌트 언마운트 시 실행
     return () => {
-      // 비동기 작업 취소를 위한 플래그는 필요시 추가 가능
+      isMounted = false; // 컴포넌트 언마운트 시 플래그 설정
     };
   }, [supabase]);
 
@@ -349,13 +373,13 @@ export default function CommunityPage() {
           setIsLoading(true);
           setTimeout(() => {
             setDisplayedCountRecent((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, recentPosts.length)
+              Math.min(prev + ITEMS_PER_LOAD, recentPosts.length),
             );
             setIsLoading(false);
           }, 300);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" }
+      { threshold: 0.1, rootMargin: "100px" },
     );
 
     observer.observe(observerTarget);
@@ -377,13 +401,13 @@ export default function CommunityPage() {
           setIsLoading(true);
           setTimeout(() => {
             setDisplayedCountPopular((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, popularPosts.length)
+              Math.min(prev + ITEMS_PER_LOAD, popularPosts.length),
             );
             setIsLoading(false);
           }, 300);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" }
+      { threshold: 0.1, rootMargin: "100px" },
     );
 
     observer.observe(observerTarget);
@@ -405,13 +429,13 @@ export default function CommunityPage() {
           setIsLoading(true);
           setTimeout(() => {
             setDisplayedCountDiscussion((prev) =>
-              Math.min(prev + ITEMS_PER_LOAD, discussionPosts.length)
+              Math.min(prev + ITEMS_PER_LOAD, discussionPosts.length),
             );
             setIsLoading(false);
           }, 300);
         }
       },
-      { threshold: 0.1, rootMargin: "100px" }
+      { threshold: 0.1, rootMargin: "100px" },
     );
 
     observer.observe(observerTarget);
@@ -427,17 +451,17 @@ export default function CommunityPage() {
   // 표시할 게시물 데이터 계산
   const displayedRecentPosts = useMemo(
     () => recentPosts.slice(0, displayedCountRecent),
-    [recentPosts, displayedCountRecent]
+    [recentPosts, displayedCountRecent],
   );
 
   const displayedPopularPosts = useMemo(
     () => popularPosts.slice(0, displayedCountPopular),
-    [popularPosts, displayedCountPopular]
+    [popularPosts, displayedCountPopular],
   );
 
   const displayedDiscussionPosts = useMemo(
     () => discussionPosts.slice(0, displayedCountDiscussion),
-    [discussionPosts, displayedCountDiscussion]
+    [discussionPosts, displayedCountDiscussion],
   );
 
   // 더 로드할 데이터가 있는지 확인

@@ -52,7 +52,7 @@ export const RichTextEditor = forwardRef<
     placeholder = "내용을 입력하세요...",
     editable = true,
   },
-  ref
+  ref,
 ) {
   // 클라이언트 마운트 상태 (Hydration 에러 방지)
   const [isMounted, setIsMounted] = useState(false);
@@ -228,7 +228,7 @@ export const RichTextEditor = forwardRef<
       previousUrl
         ? "링크 URL을 수정하세요 (삭제하려면 빈 값 입력):"
         : "링크 URL을 입력하세요:",
-      previousUrl || ""
+      previousUrl || "",
     );
 
     if (url === null) {
@@ -251,7 +251,9 @@ export const RichTextEditor = forwardRef<
   // 서버 사이드 렌더링 시 동일한 구조를 렌더링하여 Hydration 에러 방지
   if (!isMounted || !editor) {
     return (
-      <div className="border rounded-lg overflow-hidden relative">
+      <div
+        className={`${editable ? "border rounded-lg" : ""} overflow-hidden relative`}
+      >
         {/* 툴바 (서버와 클라이언트에서 동일한 구조) */}
         {editable && (
           <div className="border-b p-2 flex flex-wrap gap-1 bg-muted/50">
@@ -275,7 +277,9 @@ export const RichTextEditor = forwardRef<
           </div>
         )}
         {/* 에디터 영역 */}
-        <div className="relative p-4 min-h-[300px] prose prose-sm max-w-none">
+        <div
+          className={`relative ${editable ? "p-4 min-h-[300px]" : ""} prose prose-sm max-w-none`}
+        >
           <div className="text-muted-foreground">{placeholder}</div>
         </div>
       </div>
@@ -283,7 +287,9 @@ export const RichTextEditor = forwardRef<
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden relative">
+    <div
+      className={`${editable ? "border rounded-lg" : ""} overflow-hidden relative`}
+    >
       {/* 툴바 */}
       {editable && (
         <div className="border-b p-2 flex flex-wrap gap-1 bg-muted/50">
@@ -433,7 +439,9 @@ export const RichTextEditor = forwardRef<
       )}
 
       {/* 에디터 영역 */}
-      <div className="relative p-4 min-h-[300px] prose prose-sm max-w-none">
+      <div
+        className={`relative ${editable ? "p-4 min-h-[300px]" : ""} prose prose-sm max-w-none`}
+      >
         <EditorContent editor={editor} />
         {isUploading && (
           <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-b-lg">

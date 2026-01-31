@@ -31,6 +31,11 @@ interface News {
   author_id: string | null;
   created_at: string;
   updated_at: string;
+  author?: {
+    id: string;
+    name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 /**
@@ -67,7 +72,7 @@ function EditQueryHandler({
         if (newsToEdit) {
           onEdit(newsToEdit);
           // URL에서 쿼리 파라미터 제거
-          router.replace("/dashboard/news");
+          router.replace("/news");
         }
       }
     }
@@ -129,7 +134,7 @@ function DashboardNewsPageContent() {
 
         if (!profile?.is_admin) {
           alert("관리자 권한이 필요합니다.");
-          router.push("/dashboard");
+          router.push("/");
           return;
         }
 
@@ -190,7 +195,7 @@ function DashboardNewsPageContent() {
     }
   };
 
-  // 뉴스 목록 로드 (카테고리 포함)
+  // 뉴스 목록 로드 (카테고리 및 작성자 정보 포함)
   const loadNews = async () => {
     try {
       // Supabase에서 직접 뉴스 목록 조회 (최신순, 카테고리 포함)
@@ -206,7 +211,7 @@ function DashboardNewsPageContent() {
               name
             )
           )
-        `
+        `,
         )
         .order("created_at", { ascending: false });
 
@@ -216,7 +221,44 @@ function DashboardNewsPageContent() {
         return;
       }
 
-      setNewsList(newsData || []);
+      // 작성자 정보 조회
+      const authorIds = [
+        ...new Set(
+          (newsData || [])
+            .map((news) => news.author_id)
+            .filter((id): id is string => id !== null),
+        ),
+      ];
+
+      let authorMap = new Map<
+        string,
+        { id: string; name: string | null; avatar_url: string | null }
+      >();
+
+      if (authorIds.length > 0) {
+        const { data: authorData } = await supabase
+          .from("profiles")
+          .select("id, name, avatar_url")
+          .in("id", authorIds);
+
+        if (authorData) {
+          authorData.forEach((author) => {
+            authorMap.set(author.id, {
+              id: author.id,
+              name: author.name,
+              avatar_url: author.avatar_url,
+            });
+          });
+        }
+      }
+
+      // 뉴스 데이터에 작성자 정보 추가
+      const newsWithAuthors = (newsData || []).map((news) => ({
+        ...news,
+        author: news.author_id ? authorMap.get(news.author_id) : undefined,
+      }));
+
+      setNewsList(newsWithAuthors);
     } catch (error) {
       console.error("뉴스 로드 오류:", error);
       alert("뉴스를 불러오는데 실패했습니다.");
@@ -250,9 +292,7 @@ function DashboardNewsPageContent() {
     }
 
     try {
-      const url = editingNews
-        ? `/dashboard/news/api/${editingNews.id}`
-        : "/dashboard/news/api";
+      const url = editingNews ? `/news/api/${editingNews.id}` : "/news/api";
       const method = editingNews ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -267,7 +307,7 @@ function DashboardNewsPageContent() {
 
       if (response.ok) {
         alert(
-          editingNews ? "뉴스가 수정되었습니다." : "뉴스가 작성되었습니다."
+          editingNews ? "뉴스가 수정되었습니다." : "뉴스가 작성되었습니다.",
         );
         resetForm();
         await loadNews();
@@ -301,7 +341,7 @@ function DashboardNewsPageContent() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/dashboard/news/api/upload-image", {
+      const response = await fetch("/news/api/upload-image", {
         method: "POST",
         body: formData,
       });
@@ -318,7 +358,9 @@ function DashboardNewsPageContent() {
     } catch (error) {
       console.error("이미지 업로드 오류:", error);
       alert(
-        error instanceof Error ? error.message : "이미지 업로드에 실패했습니다."
+        error instanceof Error
+          ? error.message
+          : "이미지 업로드에 실패했습니다.",
       );
     } finally {
       setIsUploadingImage(false);
@@ -377,7 +419,7 @@ function DashboardNewsPageContent() {
 
     // 중복 확인
     const exists = categories.some(
-      (cat) => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+      (cat) => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase(),
     );
     if (exists) {
       alert("이미 존재하는 카테고리입니다.");
@@ -416,11 +458,11 @@ function DashboardNewsPageContent() {
   // 카테고리 삭제
   const handleDeleteCategory = async (
     categoryId: string,
-    categoryName: string
+    categoryName: string,
   ) => {
     if (
       !confirm(
-        `정말 "${categoryName}" 카테고리를 삭제하시겠습니까?\n이 카테고리가 연결된 모든 뉴스에서도 제거됩니다.`
+        `정말 "${categoryName}" 카테고리를 삭제하시겠습니까?\n이 카테고리가 연결된 모든 뉴스에서도 제거됩니다.`,
       )
     ) {
       return;
@@ -467,7 +509,7 @@ function DashboardNewsPageContent() {
     }
 
     try {
-      const response = await fetch(`/dashboard/news/api/${id}`, {
+      const response = await fetch(`/news/api/${id}`, {
         method: "DELETE",
       });
 
@@ -502,6 +544,41 @@ function DashboardNewsPageContent() {
     if (!html) return "";
     // 간단한 HTML 태그 제거
     return html.replace(/<[^>]*>/g, "").trim();
+  };
+
+  // 본문에서 첫 번째 이미지 URL 추출
+  const getFirstImageFromContent = (content: string | null): string | null => {
+    if (!content) return null;
+
+    // HTML에서 첫 번째 img 태그의 src 속성 추출
+    const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+    if (imgMatch && imgMatch[1]) {
+      return imgMatch[1];
+    }
+
+    // TipTap JSON 형식인 경우 처리
+    try {
+      const jsonContent = JSON.parse(content);
+      if (jsonContent && jsonContent.content) {
+        const findImage = (nodes: any[]): string | null => {
+          for (const node of nodes) {
+            if (node.type === "image" && node.attrs?.src) {
+              return node.attrs.src;
+            }
+            if (node.content && Array.isArray(node.content)) {
+              const found = findImage(node.content);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        return findImage(jsonContent.content);
+      }
+    } catch (e) {
+      // JSON 파싱 실패 시 HTML로 처리
+    }
+
+    return null;
   };
 
   if (isLoading) {
@@ -721,182 +798,7 @@ function DashboardNewsPageContent() {
                   )}
                 </div>
               </div>
-              <div>
-                <label
-                  htmlFor="image_url"
-                  className="block text-sm font-medium mb-2"
-                >
-                  대표이미지
-                </label>
-                <div className="space-y-2">
-                  {/* 드래그 앤 드롭 영역 */}
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      isDragging
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    } ${
-                      isUploadingImage ? "opacity-50 pointer-events-none" : ""
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
-                    }}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
 
-                      const files = Array.from(e.dataTransfer.files);
-                      const imageFile = files.find((file) =>
-                        file.type.startsWith("image/")
-                      );
-
-                      if (imageFile) {
-                        await handleImageUpload(imageFile);
-                      }
-                    }}
-                  >
-                    {imagePreview ? (
-                      <div className="space-y-4">
-                        <div className="relative inline-block">
-                          <img
-                            src={imagePreview}
-                            alt="대표이미지 미리보기"
-                            className="max-w-full h-auto max-h-64 rounded-lg border-2 border-border"
-                            onError={() => {
-                              setImagePreview(null);
-                              setFormData({ ...formData, image_url: "" });
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-2 right-2"
-                            onClick={() => {
-                              setImagePreview(null);
-                              setFormData({ ...formData, image_url: "" });
-                            }}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <div className="flex gap-2 justify-center">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              const input = document.createElement("input");
-                              input.type = "file";
-                              input.accept = "image/*";
-                              input.onchange = async (e) => {
-                                const file = (e.target as HTMLInputElement)
-                                  .files?.[0];
-                                if (file) {
-                                  await handleImageUpload(file);
-                                }
-                              };
-                              input.click();
-                            }}
-                            disabled={isUploadingImage}
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            이미지 변경
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              if (formData.image_url && editorRef.current) {
-                                editorRef.current.insertImage(
-                                  formData.image_url
-                                );
-                              }
-                            }}
-                            disabled={!formData.image_url}
-                            title="에디터에 이미지 삽입"
-                          >
-                            <ImageIcon className="w-4 h-4 mr-2" />
-                            에디터에 삽입
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex flex-col items-center gap-2">
-                          <ImageIcon className="w-12 h-12 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">
-                              이미지를 드래그 앤 드롭하거나 클릭하여 선택하세요
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              지원 형식: JPG, PNG, GIF, WEBP, SVG (최대 10MB)
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            const input = document.createElement("input");
-                            input.type = "file";
-                            input.accept = "image/*";
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement)
-                                .files?.[0];
-                              if (file) {
-                                await handleImageUpload(file);
-                              }
-                            };
-                            input.click();
-                          }}
-                          disabled={isUploadingImage}
-                        >
-                          <ImageIcon className="w-4 h-4 mr-2" />
-                          이미지 선택
-                        </Button>
-                      </div>
-                    )}
-                    {isUploadingImage && (
-                      <div className="mt-4">
-                        <p className="text-sm text-muted-foreground">
-                          이미지 업로드 중...
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {/* URL 직접 입력 (선택사항) */}
-                  <div className="flex gap-2">
-                    <Input
-                      id="image_url"
-                      type="url"
-                      value={formData.image_url}
-                      onChange={(e) => {
-                        const url = e.target.value;
-                        setFormData({ ...formData, image_url: url });
-                        // URL이 유효한 이미지 URL인지 확인하여 미리보기 표시
-                        if (
-                          url &&
-                          /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(url)
-                        ) {
-                          setImagePreview(url);
-                        } else if (!url) {
-                          setImagePreview(null);
-                        }
-                      }}
-                      placeholder="또는 이미지 URL을 직접 입력하세요"
-                      className="text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
               <div className="flex gap-2">
                 <Button type="submit">
                   {editingNews ? "수정하기" : "작성하기"}
@@ -910,8 +812,8 @@ function DashboardNewsPageContent() {
         </Card>
       )}
 
-      {/* 뉴스 목록 */}
-      <div className="space-y-4">
+      {/* 뉴스 목록 - 카드 그리드 레이아웃 */}
+      <div>
         {newsList.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -924,81 +826,73 @@ function DashboardNewsPageContent() {
             </CardContent>
           </Card>
         ) : (
-          newsList.map((news) => (
-            <Card
-              key={news.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => router.push(`/dashboard/news/${news.id}`)}
-            >
-              <CardContent className="p-6">
-                <div className="flex gap-4">
-                  {/* 이미지 */}
-                  {news.image_url && (
-                    <div className="flex-shrink-0 w-32 h-32">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {newsList.map((news) => {
+              // 본문에서 첫 번째 이미지 추출
+              const thumbnailImage = getFirstImageFromContent(news.content);
+
+              return (
+                <Card
+                  key={news.id}
+                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
+                  onClick={() => router.push(`/news/${news.id}`)}
+                >
+                  {/* 이미지 영역 - 카드 상단 대부분 차지 */}
+                  <div className="relative w-full aspect-4/3 overflow-hidden bg-muted">
+                    {thumbnailImage ? (
                       <img
-                        src={news.image_url}
+                        src={thumbnailImage}
                         alt={news.headline}
-                        className="w-full h-full object-cover rounded"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = "none";
                         }}
                       />
-                    </div>
-                  )}
-                  {/* 내용 */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold mb-2 line-clamp-2">
-                      {news.headline}
-                    </h3>
-                    {news.content && (
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                        {stripHtmlTags(news.content)}
-                      </p>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <Newspaper className="w-12 h-12 text-muted-foreground" />
+                      </div>
                     )}
-                    {/* 카테고리 표시 */}
-                    {(news as any).news_categories &&
-                      (news as any).news_categories.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {(news as any).news_categories.map(
-                            (nc: any, idx: number) => (
-                              <span
-                                key={idx}
-                                className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary"
-                              >
-                                {nc.categories?.name || "알 수 없음"}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      )}
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        작성일: {formatDate(news.created_at)}
-                        {news.updated_at !== news.created_at && (
-                          <span className="ml-2">
-                            (수정: {formatDate(news.updated_at)})
-                          </span>
-                        )}
-                      </p>
-                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+
+                {/* 내용 영역 */}
+                <CardContent className="p-4 flex-1 flex flex-col">
+                  {/* 기사 제목 */}
+                  <h3 className="text-base font-semibold mb-3 line-clamp-2 text-foreground leading-snug">
+                    {news.headline}
+                  </h3>
+
+                  {/* 기자 정보 - 하단 */}
+                  <div className="mt-auto flex items-center gap-2">
+                    {news.author?.avatar_url ? (
+                      <img
+                        src={news.author.avatar_url}
+                        alt={news.author.name || "기자"}
+                        className="w-6 h-6 rounded-full object-cover shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {news.author?.name?.[0] || "?"}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-xs text-muted-foreground truncate">
+                      {news.author?.name || "익명"} 기자
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+              );
+            })}
+          </div>
         )}
       </div>
-
-      {/* 쿼리 파라미터 처리 (Suspense 경계 내) */}
-      <Suspense fallback={null}>
-        <EditQueryHandler
-          isAdmin={isAdmin}
-          newsList={newsList}
-          onEdit={handleEdit}
-          router={router}
-        />
-      </Suspense>
     </div>
   );
 }
@@ -1008,13 +902,15 @@ function DashboardNewsPageContent() {
  */
 export default function DashboardNewsPage() {
   return (
-    <Suspense fallback={
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">로딩 중...</p>
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-muted-foreground">로딩 중...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <DashboardNewsPageContent />
     </Suspense>
   );
