@@ -15,7 +15,8 @@ export const metadata: Metadata = {
     default: "비트스포 - 암호화폐 뉴스 플랫폼",
     template: "%s | 비트스포",
   },
-  description: "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 플랫폼입니다.",
+  description:
+    "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 플랫폼입니다.",
 };
 
 export default function RootLayout({
@@ -25,6 +26,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="dark">
+      <head>
+        <script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="lkswNHerzCZ9k+NDEZ//Cg"
+          async
+        ></script>
+      </head>
       <body className={`${roboto.variable} antialiased pt-28`}>
         <Header />
         {children}
