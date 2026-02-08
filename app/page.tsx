@@ -277,6 +277,9 @@ export default function Home() {
   return (
     <div className="bg-muted py-4 ">
       <div className="container mx-auto space-y-4">
+        {/* 메인 페이지 제목 (SEO를 위한 H1 태그) */}
+        <h1 className="sr-only">비트스포 - 암호화폐 뉴스 플랫폼</h1>
+        
         {/* 메인 그리드 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           {/* 왼쪽: PICK 뉴스 섹션 */}

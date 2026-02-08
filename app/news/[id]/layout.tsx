@@ -1,9 +1,112 @@
 import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = {
-  title: "뉴스 상세 - 비트스포",
-  description: "뉴스 상세 내용을 확인할 수 있는 페이지입니다.",
-};
+/**
+ * 뉴스 상세 페이지의 동적 메타데이터 생성
+ * SEO 최적화를 위해 각 뉴스의 제목과 내용을 기반으로 메타데이터 생성
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  try {
+    // 뉴스 데이터 조회
+    const { data: news, error } = await supabase
+      .from("news")
+      .select("headline, content, image_url, created_at")
+      .eq("id", id)
+      .single();
+
+    // 뉴스를 찾을 수 없는 경우 기본 메타데이터 반환
+    if (error || !news) {
+      return {
+        title: "뉴스를 찾을 수 없습니다 - 비트스포",
+        description: "요청하신 뉴스를 찾을 수 없습니다.",
+      };
+    }
+
+    // 본문에서 텍스트 추출 (HTML 태그 제거)
+    const extractText = (html: string | null): string => {
+      if (!html) return "";
+      // HTML 태그 제거 및 공백 정리
+      return html
+        .replace(/<[^>]*>/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 200); // 최대 200자로 제한
+    };
+
+    const contentText = extractText(news.content);
+    const description =
+      contentText.length > 0
+        ? `${contentText}...`
+        : "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 비트스포의 뉴스입니다.";
+
+    // 메타 description이 너무 짧으면 기본 설명으로 대체 (최소 120자 이상 권장)
+    const finalDescription =
+      description.length < 120
+        ? `${news.headline}. ${description} 비트스포에서 암호화폐 최신 뉴스를 확인하세요.`
+        : description;
+
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com";
+    const imageUrl = news.image_url || `${siteUrl}/logo.png`;
+
+    return {
+      title: `${news.headline} - 비트스포`,
+      description: finalDescription,
+      keywords: [
+        "비트코인",
+        "이더리움",
+        "암호화폐",
+        "블록체인",
+        "가상화폐",
+        "코인뉴스",
+        "암호화폐뉴스",
+        "비트스포",
+      ],
+      openGraph: {
+        type: "article",
+        locale: "ko_KR",
+        url: `${siteUrl}/news/${id}`,
+        siteName: "비트스포",
+        title: news.headline,
+        description: finalDescription,
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: news.headline,
+          },
+        ],
+        publishedTime: news.created_at,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: news.headline,
+        description: finalDescription,
+        images: [imageUrl],
+        creator: "@bitspo",
+      },
+      alternates: {
+        canonical: `${siteUrl}/news/${id}`,
+      },
+    };
+  } catch (error) {
+    // 에러 발생 시 기본 메타데이터 반환
+    console.error("메타데이터 생성 오류:", error);
+    return {
+      title: "뉴스 상세 - 비트스포",
+      description:
+        "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 비트스포의 뉴스입니다.",
+    };
+  }
+}
 
 /**
  * 뉴스 상세 페이지 레이아웃 - 네이버 스포츠 스타일

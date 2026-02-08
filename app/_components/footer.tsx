@@ -37,6 +37,7 @@ export default function Footer() {
             >
               커뮤니티
             </Link>
+            {/* TODO: 페이지 생성 후 주석 해제
             <Link
               href="/ai-report"
               className="text-muted-foreground hover:text-foreground transition-colors"
@@ -49,6 +50,7 @@ export default function Footer() {
             >
               멤버십
             </Link>
+            */}
           </div>
         </div>
 
@@ -60,6 +62,7 @@ export default function Footer() {
               <h3 className="sr-only">비트스포</h3>
               <div className="space-y-2 text-xs text-muted-foreground">
                 {/* 첫 번째 줄: 공지사항, 기자소개, 인재채용, 커뮤니티 운영정책 */}
+                {/* TODO: 페이지 생성 후 주석 해제
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href="/notice"
@@ -90,7 +93,6 @@ export default function Footer() {
                   </Link>
                 </div>
 
-                {/* 두 번째 줄: 이용약관, 개인정보처리방침, 윤리강령, 청소년보호정책 */}
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href="/terms"
@@ -120,6 +122,7 @@ export default function Footer() {
                     청소년보호정책
                   </Link>
                 </div>
+                */}
 
                 {/* 문의사항 이메일 */}
                 <div className="pt-2">
