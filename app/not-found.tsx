@@ -1,5 +1,20 @@
 import Link from "next/link";
 import { Button } from "@/app/_components/ui/button";
+import type { Metadata } from "next";
+
+/**
+ * 404 페이지 메타데이터
+ * SEO 최적화를 위해 404 페이지도 검색 엔진에 적절히 표시되도록 설정
+ */
+export const metadata: Metadata = {
+  title: "페이지를 찾을 수 없습니다 - 비트스포",
+  description:
+    "요청하신 페이지가 존재하지 않거나 이동되었을 수 있습니다. 비트스포에서 암호화폐 최신 뉴스와 커뮤니티를 확인하세요.",
+  robots: {
+    index: false, // 404 페이지는 색인하지 않음
+    follow: true, // 링크는 따라갈 수 있도록 허용
+  },
+};
 
 /**
  * 404 페이지 - 페이지를 찾을 수 없을 때 표시되는 페이지

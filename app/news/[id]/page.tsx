@@ -16,6 +16,7 @@ import {
   Type,
   ArrowLeft,
 } from "lucide-react";
+import Link from "next/link";
 
 /**
  * 뉴스 타입 정의
@@ -65,6 +66,8 @@ export default function NewsDetailPage() {
     follow: 0,
   });
   const [userReaction, setUserReaction] = useState<ReactionType | null>(null);
+  // 관련 기사 상태 추가
+  const [relatedNews, setRelatedNews] = useState<News[]>([]);
 
   // Supabase 클라이언트 생성
   const supabase = createClient();
@@ -101,6 +104,65 @@ export default function NewsDetailPage() {
           if (profileData) {
             setAuthorProfile(profileData);
           }
+        }
+
+        // 관련 기사 로드 (같은 작성자의 다른 뉴스 또는 최신 뉴스)
+        try {
+          let relatedQuery = supabase
+            .from("news")
+            .select("*")
+            .neq("id", newsId) // 현재 뉴스 제외
+            .order("created_at", { ascending: false })
+            .limit(5); // 최대 5개
+
+          // 같은 작성자가 있으면 같은 작성자의 뉴스 우선 표시
+          if (newsData.author_id) {
+            const { data: authorNews } = await supabase
+              .from("news")
+              .select("*")
+              .eq("author_id", newsData.author_id)
+              .neq("id", newsId)
+              .order("created_at", { ascending: false })
+              .limit(3);
+
+            if (authorNews && authorNews.length > 0) {
+              // 나머지는 최신 뉴스로 채움
+              const authorNewsIds = authorNews.map((n) => n.id);
+              const excludeIds = [newsId, ...authorNewsIds];
+              
+              // Supabase의 not().in() 사용
+              let latestQuery = supabase
+                .from("news")
+                .select("*")
+                .neq("id", newsId)
+                .order("created_at", { ascending: false })
+                .limit(5 - authorNews.length);
+              
+              // authorNewsIds를 제외하기 위해 각각 neq 사용
+              authorNewsIds.forEach((id) => {
+                latestQuery = latestQuery.neq("id", id);
+              });
+              
+              const { data: latestNews } = await latestQuery;
+
+              setRelatedNews([
+                ...authorNews,
+                ...(latestNews || []),
+              ].slice(0, 5));
+            } else {
+              // 작성자의 다른 뉴스가 없으면 최신 뉴스만 표시
+              const { data: latestNews } = await relatedQuery;
+              setRelatedNews(latestNews || []);
+            }
+          } else {
+            // 작성자가 없으면 최신 뉴스만 표시
+            const { data: latestNews } = await relatedQuery;
+            setRelatedNews(latestNews || []);
+          }
+        } catch (error) {
+          console.error("관련 기사 로드 오류:", error);
+          // 에러 발생 시 빈 배열로 설정
+          setRelatedNews([]);
         }
 
         // 현재 사용자 확인 (공감 기능용)
@@ -450,14 +512,57 @@ export default function NewsDetailPage() {
           </div>
         )}
 
-        {/* 관련 기사 섹션 (추후 구현 가능) */}
-        <div className="border-t border-border pt-6">
-          <h3 className="text-lg font-semibold mb-4">관련 기사</h3>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              관련 기사가 없습니다.
-            </p>
+        {/* 관련 기사 섹션 */}
+        {relatedNews.length > 0 && (
+          <div className="border-t border-border pt-6">
+            <h3 className="text-lg font-semibold mb-4">관련 기사</h3>
+            <div className="space-y-3">
+              {relatedNews.map((relatedItem) => (
+                <Link
+                  key={relatedItem.id}
+                  href={`/news/${relatedItem.id}`}
+                  className="block group hover:bg-muted/50 rounded-lg p-3 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* 썸네일 이미지 */}
+                    {relatedItem.image_url && (
+                      <div className="shrink-0 w-24 h-16 rounded overflow-hidden">
+                        <img
+                          src={relatedItem.image_url}
+                          alt={relatedItem.headline}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
+                    {/* 제목 및 날짜 */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-base line-clamp-2 group-hover:text-primary transition-colors mb-1">
+                        {relatedItem.headline}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(relatedItem.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
+        )}
+        
+        {/* 뉴스 목록으로 돌아가기 링크 */}
+        <div className="border-t border-border pt-6 mt-6">
+          <Link
+            href="/news"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>뉴스 목록으로 돌아가기</span>
+          </Link>
         </div>
     </div>
   );

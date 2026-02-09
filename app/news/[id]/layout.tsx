@@ -35,21 +35,46 @@ export async function generateMetadata({
       // HTML 태그 제거 및 공백 정리
       return html
         .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
         .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 200); // 최대 200자로 제한
+        .trim();
     };
 
     const contentText = extractText(news.content);
-    const description =
-      contentText.length > 0
-        ? `${contentText}...`
-        : "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 비트스포의 뉴스입니다.";
+    
+    // 메타 description 생성 (120-160자 권장, 최대 160자)
+    let description = "";
+    if (contentText.length > 0) {
+      // 내용이 충분히 긴 경우
+      if (contentText.length >= 120) {
+        description = contentText.substring(0, 160).trim();
+        // 문장이 중간에 끊기지 않도록 마지막 공백이나 구두점에서 자름
+        const lastSpace = description.lastIndexOf(" ");
+        const lastPeriod = description.lastIndexOf(".");
+        const cutPoint = Math.max(lastSpace, lastPeriod);
+        if (cutPoint > 100) {
+          description = description.substring(0, cutPoint + 1);
+        }
+      } else {
+        // 내용이 짧은 경우 헤드라인과 함께 조합
+        description = `${news.headline}. ${contentText} 비트스포에서 암호화폐 최신 뉴스와 시장 분석을 확인하세요.`;
+      }
+    } else {
+      // 내용이 없는 경우 기본 설명 사용
+      description = `${news.headline}. 비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 비트스포의 뉴스입니다. 전문가 분석과 실시간 시세 정보를 확인하세요.`;
+    }
 
-    // 메타 description이 너무 짧으면 기본 설명으로 대체 (최소 120자 이상 권장)
+    // 최종 description 길이 확인 및 보정 (최소 120자, 최대 160자)
     const finalDescription =
       description.length < 120
-        ? `${news.headline}. ${description} 비트스포에서 암호화폐 최신 뉴스를 확인하세요.`
+        ? `${description} 비트스포에서 암호화폐 최신 뉴스를 확인하세요.`
+        : description.length > 160
+        ? description.substring(0, 157).trim() + "..."
         : description;
 
     const siteUrl =

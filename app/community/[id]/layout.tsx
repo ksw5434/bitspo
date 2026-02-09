@@ -35,21 +35,46 @@ export async function generateMetadata({
       // HTML 태그 제거 및 공백 정리
       return html
         .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
         .replace(/\s+/g, " ")
-        .trim()
-        .substring(0, 200); // 최대 200자로 제한
+        .trim();
     };
 
     const contentText = extractText(post.content);
-    const description =
-      contentText.length > 0
-        ? `${contentText}...`
-        : "암호화폐 관련 토론과 정보를 공유하는 비트스포 커뮤니티의 게시글입니다.";
+    
+    // 메타 description 생성 (120-160자 권장, 최대 160자)
+    let description = "";
+    if (contentText.length > 0) {
+      // 내용이 충분히 긴 경우
+      if (contentText.length >= 120) {
+        description = contentText.substring(0, 160).trim();
+        // 문장이 중간에 끊기지 않도록 마지막 공백이나 구두점에서 자름
+        const lastSpace = description.lastIndexOf(" ");
+        const lastPeriod = description.lastIndexOf(".");
+        const cutPoint = Math.max(lastSpace, lastPeriod);
+        if (cutPoint > 100) {
+          description = description.substring(0, cutPoint + 1);
+        }
+      } else {
+        // 내용이 짧은 경우 제목과 함께 조합
+        description = `${post.title}. ${contentText} 비트스포 커뮤니티에서 암호화폐 관련 정보를 공유하고 토론하세요.`;
+      }
+    } else {
+      // 내용이 없는 경우 기본 설명 사용
+      description = `${post.title}. 암호화폐 관련 토론과 정보를 공유하는 비트스포 커뮤니티의 게시글입니다. 비트코인, 이더리움 등 다양한 암호화폐에 대한 의견을 나누고 투자 전략을 공유하세요.`;
+    }
 
-    // 메타 description이 너무 짧으면 기본 설명으로 대체 (최소 120자 이상 권장)
+    // 최종 description 길이 확인 및 보정 (최소 120자, 최대 160자)
     const finalDescription =
       description.length < 120
-        ? `${post.title}. ${description} 비트스포 커뮤니티에서 암호화폐 관련 정보를 공유하고 토론하세요.`
+        ? `${description} 비트스포 커뮤니티에서 암호화폐 관련 정보를 공유하고 토론하세요.`
+        : description.length > 160
+        ? description.substring(0, 157).trim() + "..."
         : description;
 
     const siteUrl =
