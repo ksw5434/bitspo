@@ -140,12 +140,14 @@ export const RichTextEditor = forwardRef<
       onChange?.(html);
     },
     editorProps: {
-      // 파일 드래그 오버 시 기본 동작 방지 (드롭 허용에 필요)
-      handleDragOver: (view, event) => {
-        if (event.dataTransfer?.types?.includes("Files")) {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "copy";
-        }
+      // handleDOMEvents: ProseMirror EditorProps에 handleDragOver가 없어 DOM 이벤트로 처리
+      handleDOMEvents: {
+        dragover: (_view, event) => {
+          if (event.dataTransfer?.types?.includes("Files")) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+          }
+        },
       },
       // 이미지 드래그 앤 드롭 처리 - 업로드 후 드롭 위치에 삽입
       handleDrop: (view, event, slice, moved) => {
