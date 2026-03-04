@@ -505,18 +505,18 @@ export default function NewsDetailPage() {
           </button>
         </div>
 
-        {/* 본문 이미지 - image_url이 있을 때만 표시 */}
+        {/* 본문 첫 이미지 - 캡션에 뉴스 제목(헤드라인) 표시 */}
         {news.image_url && (
-          <div className="mb-8">
+          <figure className="mb-8">
             <img
               src={news.image_url}
               alt={news.headline}
-              className="w-full h-auto rounded-lg object-cover"
+              className="w-full h-auto rounded-lg object-cover block"
             />
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+            <figcaption className="text-xs text-muted-foreground mt-1.5 text-center">
               {news.headline}
-            </p>
-          </div>
+            </figcaption>
+          </figure>
         )}
 
         {/* 본문 내용 */}
