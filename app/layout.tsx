@@ -12,12 +12,29 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
   title: {
-    default: "비트스포 - 암호화폐 뉴스 플랫폼",
+    default: "비트스포 - 암호화폐 온라인 스포츠",
     template: "%s | 비트스포",
   },
   description:
-    "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 플랫폼입니다. 실시간 암호화폐 시세, 전문가 분석, 커뮤니티 토론까지 한 곳에서 만나보세요.",
+    "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 스포츠 플랫폼입니다. 실시간 암호화폐 시세, 전문가 분석, 커뮤니티 토론까지 한 곳에서 만나보세요.",
   keywords: [
+    "암호화폐 스포츠",
+    "암호화폐 스포츠 플랫폼",
+    "암호화폐 스포츠 뉴스",
+    "암호화폐 스포츠 시장 분석",
+    "암호화폐 스포츠 전문가 분석",
+    "암호화폐 스포츠 커뮤니티",
+    "암호화폐 스포츠 토론",
+    "암호화폐 스포츠 투자",
+    "암호화폐 스포츠 투자 전략",
+    "암호화폐 스포츠 투자 전문가",
+    "암호화폐 스포츠 투자 전문가 분석",
+    "암호화폐 스포츠 투자 전문가 분석",
+    "비트코인 스포츠",
+    "이더리움 스포츠",
+    "암호화폐 스포츠 시장",
+    "암호화폐 스포츠 시장 분석",
+    "암호화폐 스포츠 시장 분석",
     "비트코인",
     "이더리움",
     "암호화폐",
@@ -36,7 +53,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com",
   ),
   alternates: {
     canonical: "/",
@@ -46,9 +63,9 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "/",
     siteName: "비트스포",
-    title: "비트스포 - 암호화폐 뉴스 플랫폼",
+    title: "비트스포 - 암호화폐 온라인 스포츠",
     description:
-      "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 플랫폼입니다. 실시간 암호화폐 시세, 전문가 분석, 커뮤니티 토론까지 한 곳에서 만나보세요.",
+      "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 스포츠 플랫폼입니다. 실시간 암호화폐 시세, 전문가 분석, 커뮤니티 토론까지 한 곳에서 만나보세요.",
     images: [
       {
         url: "/logo.png",
@@ -60,9 +77,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "비트스포 - 암호화폐 뉴스 플랫폼",
+    title: "비트스포 - 암호화폐 온라인 스포츠",
     description:
-      "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 플랫폼입니다.",
+      "비트코인, 이더리움 등 암호화폐 최신 뉴스와 시장 분석을 제공하는 종합 스포츠 플랫폼입니다.",
     images: ["/logo.png"],
     creator: "@bitspo",
   },

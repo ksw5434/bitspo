@@ -123,7 +123,11 @@ export default function Home() {
       if (imgMatch && imgMatch[1]) {
         const imageSrc = imgMatch[1];
         // 유효한 이미지 URL인지 확인
-        if (imageSrc && imageSrc.trim() !== "" && !imageSrc.startsWith("data:")) {
+        if (
+          imageSrc &&
+          imageSrc.trim() !== "" &&
+          !imageSrc.startsWith("data:")
+        ) {
           return imageSrc;
         }
       }
@@ -203,22 +207,26 @@ export default function Home() {
           console.error("전체 뉴스 로드 오류:", allError);
           setAllNews([]);
         } else {
-          const transformedAllNews: NewsItem[] = (allNewsData || []).map((news) => {
-            // 본문에서 첫 번째 이미지 추출 (우선순위 1)
-            const firstImageFromContent = getFirstImageFromContent(news.content);
-            // 본문에 이미지가 없을 때만 image_url 또는 랜덤 placeholder 사용
-            const thumbnailImage =
-              firstImageFromContent ||
-              news.image_url ||
-              getRandomPlaceholderThumbnail(news.id);
+          const transformedAllNews: NewsItem[] = (allNewsData || []).map(
+            (news) => {
+              // 본문에서 첫 번째 이미지 추출 (우선순위 1)
+              const firstImageFromContent = getFirstImageFromContent(
+                news.content,
+              );
+              // 본문에 이미지가 없을 때만 image_url 또는 랜덤 placeholder 사용
+              const thumbnailImage =
+                firstImageFromContent ||
+                news.image_url ||
+                getRandomPlaceholderThumbnail(news.id);
 
-            return {
-              id: news.id,
-              image: thumbnailImage,
-              headline: news.headline || "제목 없음",
-              timestamp: formatRelativeTime(news.created_at),
-            };
-          });
+              return {
+                id: news.id,
+                image: thumbnailImage,
+                headline: news.headline || "제목 없음",
+                timestamp: formatRelativeTime(news.created_at),
+              };
+            },
+          );
           setAllNews(transformedAllNews);
         }
 
@@ -239,7 +247,9 @@ export default function Home() {
             const pickNewsData = pickResult.data || [];
             const transformedPickNews: NewsItem[] = pickNewsData.map((news) => {
               // 본문에서 첫 번째 이미지 추출 (우선순위 1)
-              const firstImageFromContent = getFirstImageFromContent(news.content);
+              const firstImageFromContent = getFirstImageFromContent(
+                news.content,
+              );
               // 본문에 이미지가 없을 때만 image_url 또는 랜덤 placeholder 사용
               const thumbnailImage =
                 firstImageFromContent ||
@@ -257,7 +267,10 @@ export default function Home() {
           }
         } catch (err) {
           // is_pick 필드가 없는 경우 빈 배열로 처리
-          console.warn("PICK 뉴스 조회 실패 (is_pick 필드가 없을 수 있음):", err);
+          console.warn(
+            "PICK 뉴스 조회 실패 (is_pick 필드가 없을 수 있음):",
+            err,
+          );
           setPickNews([]);
         }
       } catch (error) {
@@ -282,8 +295,8 @@ export default function Home() {
     <div className="bg-muted py-4 ">
       <div className="container mx-auto space-y-4">
         {/* 메인 페이지 제목 (SEO를 위한 H1 태그) */}
-        <h1 className="sr-only">비트스포 - 암호화폐 뉴스 플랫폼</h1>
-        
+        <h1 className="sr-only">비트스포 - 암호화폐 온라인 스포츠</h1>
+
         {/* 메인 그리드 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           {/* 왼쪽: PICK 뉴스 섹션 */}
@@ -301,7 +314,9 @@ export default function Home() {
                 </div>
               ) : newsGroups.length === 0 ? (
                 <div className="flex items-center justify-center h-96">
-                  <p className="text-muted-foreground">표시할 뉴스가 없습니다.</p>
+                  <p className="text-muted-foreground">
+                    표시할 뉴스가 없습니다.
+                  </p>
                 </div>
               ) : (
                 <NewsCarousel newsGroups={newsGroups} />
@@ -364,11 +379,15 @@ export default function Home() {
                 <TabsContent value="all" className="mt-6">
                   {isLoadingRealtimeNews ? (
                     <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">뉴스를 불러오는 중...</p>
+                      <p className="text-muted-foreground">
+                        뉴스를 불러오는 중...
+                      </p>
                     </div>
                   ) : allNews.length === 0 ? (
                     <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">표시할 뉴스가 없습니다.</p>
+                      <p className="text-muted-foreground">
+                        표시할 뉴스가 없습니다.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -379,7 +398,11 @@ export default function Home() {
                               <div className="flex gap-4">
                                 {/* 썸네일 이미지 */}
                                 <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage src={news.image} alt={news.headline} newsId={news.id} />
+                                  <NewsImage
+                                    src={news.image}
+                                    alt={news.headline}
+                                    newsId={news.id}
+                                  />
                                 </div>
                                 {/* 제목과 시간 */}
                                 <div className="flex-1 flex flex-col justify-center min-w-0">
@@ -402,11 +425,15 @@ export default function Home() {
                 <TabsContent value="pick" className="mt-6">
                   {isLoadingRealtimeNews ? (
                     <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">뉴스를 불러오는 중...</p>
+                      <p className="text-muted-foreground">
+                        뉴스를 불러오는 중...
+                      </p>
                     </div>
                   ) : pickNews.length === 0 ? (
                     <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">표시할 PICK 뉴스가 없습니다.</p>
+                      <p className="text-muted-foreground">
+                        표시할 PICK 뉴스가 없습니다.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -417,7 +444,11 @@ export default function Home() {
                               <div className="flex gap-4">
                                 {/* 썸네일 이미지 */}
                                 <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage src={news.image} alt={news.headline} newsId={news.id} />
+                                  <NewsImage
+                                    src={news.image}
+                                    alt={news.headline}
+                                    newsId={news.id}
+                                  />
                                 </div>
                                 {/* 제목과 시간 */}
                                 <div className="flex-1 flex flex-col justify-center min-w-0">
