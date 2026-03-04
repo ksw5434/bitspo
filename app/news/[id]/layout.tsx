@@ -46,7 +46,7 @@ export async function generateMetadata({
     };
 
     const contentText = extractText(news.content);
-    
+
     // 메타 description 생성 (120-160자 권장, 최대 160자)
     let description = "";
     if (contentText.length > 0) {
@@ -74,11 +74,10 @@ export async function generateMetadata({
       description.length < 120
         ? `${description} 비트스포에서 암호화폐 최신 뉴스를 확인하세요.`
         : description.length > 160
-        ? description.substring(0, 157).trim() + "..."
-        : description;
+          ? description.substring(0, 157).trim() + "..."
+          : description;
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com";
     const imageUrl = news.image_url || `${siteUrl}/logo.png`;
 
     return {
@@ -208,10 +207,10 @@ export default function NewsDetailLayout({
                   </span>
                 </div>
                 <div className="pt-2">
-                  <p>문의사항 help@bloomingbit.io</p>
+                  <p>문의사항 help@bitspo.io</p>
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span>*bloomingbit</span>
+                  <span>*bitspo</span>
                   <span className="text-gray-400">▼</span>
                 </div>
                 <div className="flex items-center gap-4 pt-4">

@@ -1093,6 +1093,9 @@ export default function CommunityPostPage() {
                         alt={post.title}
                         className="w-full rounded-lg"
                       />
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        {post.title}
+                      </p>
                     </div>
                   )}
                   <div

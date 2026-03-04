@@ -513,10 +513,10 @@ export default function Home() {
                   <span>청소년보호정책</span>
                 </div>
                 <div className="pt-2">
-                  <p>문의사항 help@bloomingbit.io</p>
+                  <p>문의사항 help@bitspo.io</p>
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span>*bloomingbit</span>
+                  <span>*bitspo</span>
                   <span className="text-gray-400">▼</span>
                 </div>
                 <div className="flex items-center gap-4 pt-4">

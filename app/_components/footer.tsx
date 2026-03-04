@@ -129,7 +129,7 @@ export default function Footer() {
                   <p className="text-muted-foreground">
                     문의사항{" "}
                     <a
-                      href="mailto:help@bloomingbit.io"
+                      href="mailto:help@bitspo.io"
                       className="text-foreground hover:text-primary transition-colors"
                     >
                       help@gmail.com
