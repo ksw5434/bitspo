@@ -19,6 +19,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+import { getRandomPlaceholderImage } from "@/lib/placeholder-image";
 
 /**
  * 뉴스 타입 정의
@@ -105,6 +106,7 @@ function DashboardNewsPageContent() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // 제출 중 중복 클릭 방지
   const editorRef = useRef<RichTextEditorRef>(null);
 
   // Supabase 클라이언트 생성
@@ -285,12 +287,16 @@ function DashboardNewsPageContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 이미 제출 중이면 무시 (중복 클릭 방지)
+    if (isSubmitting) return;
+
     // 필수 필드 검증
     if (!formData.headline.trim()) {
       alert("제목을 입력해주세요.");
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const url = editingNews ? `/news/api/${editingNews.id}` : "/news/api";
       const method = editingNews ? "PUT" : "POST";
@@ -317,6 +323,8 @@ function DashboardNewsPageContent() {
     } catch (error) {
       console.error("제출 오류:", error);
       alert("작업에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -597,6 +605,13 @@ function DashboardNewsPageContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* URL 쿼리 ?edit=xxx 처리 - 뉴스 상세에서 수정 시 수정 폼 자동 오픈 */}
+      <EditQueryHandler
+        isAdmin={isAdmin}
+        newsList={newsList}
+        onEdit={handleEdit}
+        router={router}
+      />
       {/* 페이지 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -800,8 +815,12 @@ function DashboardNewsPageContent() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit">
-                  {editingNews ? "수정하기" : "작성하기"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? "처리 중..."
+                    : editingNews
+                      ? "수정하기"
+                      : "작성하기"}
                 </Button>
                 <Button type="button" variant="outline" onClick={resetForm}>
                   취소
@@ -828,8 +847,11 @@ function DashboardNewsPageContent() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {newsList.map((news) => {
-              // 본문에서 첫 번째 이미지 추출
-              const thumbnailImage = getFirstImageFromContent(news.content);
+              // 본문에서 첫 번째 이미지 추출, 없으면 image_url, 없으면 랜덤 placeholder
+              const thumbnailImage =
+                getFirstImageFromContent(news.content) ||
+                news.image_url ||
+                getRandomPlaceholderImage(news.id, 400, 300);
 
               return (
                 <Card
@@ -839,21 +861,21 @@ function DashboardNewsPageContent() {
                 >
                   {/* 이미지 영역 - 카드 상단 대부분 차지 */}
                   <div className="relative w-full aspect-4/3 overflow-hidden bg-muted">
-                    {thumbnailImage ? (
-                      <img
-                        src={thumbnailImage}
-                        alt={news.headline}
-                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                        <Newspaper className="w-12 h-12 text-muted-foreground" />
-                      </div>
-                    )}
+                    <img
+                      src={thumbnailImage}
+                      alt={news.headline}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.includes("picsum.photos")) {
+                          target.src = getRandomPlaceholderImage(
+                            news.id,
+                            400,
+                            300
+                          );
+                        }
+                      }}
+                    />
                   </div>
 
                 {/* 내용 영역 */}

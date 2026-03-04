@@ -57,6 +57,7 @@ export default function CommunityEditPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAuthor, setIsAuthor] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -105,14 +106,27 @@ export default function CommunityEditPage() {
           return;
         }
 
-        // 작성자 확인
-        if (postData.user_id !== user.id) {
+        // 작성자 또는 관리자 확인
+        const isPostAuthor = postData.user_id === user.id;
+        let isUserAdmin = false;
+
+        if (!isPostAuthor) {
+          const { data: adminProfile } = await supabase
+            .from("profiles")
+            .select("is_admin")
+            .eq("id", user.id)
+            .single();
+          isUserAdmin = !!adminProfile?.is_admin;
+        }
+
+        if (!isPostAuthor && !isUserAdmin) {
           showToast("본인의 게시글만 수정할 수 있습니다.", "error");
           router.push(`/community/${postId}`);
           return;
         }
 
-        setIsAuthor(true);
+        setIsAuthor(true); // 수정 가능 상태 (작성자 또는 관리자)
+        setIsAdmin(isUserAdmin);
 
         // 폼 데이터 설정
         setFormData({
@@ -241,21 +255,43 @@ export default function CommunityEditPage() {
     try {
       setIsSaving(true);
 
-      // 게시글 수정
-      const { error } = await supabase
-        .from("communities")
-        .update({
-          title: formData.title.trim(),
-          content: formData.content.trim(),
-          category: formData.category || null,
-          tags: formData.tags.length > 0 ? formData.tags : [],
-          image_url: formData.image_url || null,
-        })
-        .eq("id", postId)
-        .eq("user_id", currentUser.id); // 본인 게시글만 수정 가능
+      // 게시글 수정 (관리자는 API 사용, 작성자는 Supabase 직접)
+      if (isAdmin) {
+        const response = await fetch(
+          `/dashboard/community/api/${postId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: formData.title.trim(),
+              content: formData.content.trim(),
+              category: formData.category || null,
+              tags: formData.tags.length > 0 ? formData.tags : [],
+              image_url: formData.image_url || null,
+            }),
+          }
+        );
+        const result = await response.json();
 
-      if (error) {
-        throw new Error(error.message || "게시글 수정에 실패했습니다.");
+        if (!response.ok) {
+          throw new Error(result.error || "게시글 수정에 실패했습니다.");
+        }
+      } else {
+        const { error } = await supabase
+          .from("communities")
+          .update({
+            title: formData.title.trim(),
+            content: formData.content.trim(),
+            category: formData.category || null,
+            tags: formData.tags.length > 0 ? formData.tags : [],
+            image_url: formData.image_url || null,
+          })
+          .eq("id", postId)
+          .eq("user_id", currentUser.id);
+
+        if (error) {
+          throw new Error(error.message || "게시글 수정에 실패했습니다.");
+        }
       }
 
       showToast("게시글이 수정되었습니다.", "success");
@@ -473,6 +509,7 @@ export default function CommunityEditPage() {
                   }
                   placeholder="게시글 내용을 입력하세요..."
                   editable={true}
+                  uploadImageUrl="/community/api/upload-image"
                 />
               </div>
 

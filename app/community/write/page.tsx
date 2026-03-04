@@ -638,6 +638,7 @@ function CommunityWriteContent() {
                   }
                   placeholder="게시글 내용을 입력하세요..."
                   editable={true}
+                  uploadImageUrl="/community/api/upload-image"
                 />
               </div>
 

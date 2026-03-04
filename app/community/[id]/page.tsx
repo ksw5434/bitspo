@@ -141,6 +141,8 @@ export default function CommunityPostPage() {
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   // 작성자 여부 확인
   const [isAuthor, setIsAuthor] = useState(false);
+  // 관리자 여부 (관리자는 타인 게시글도 수정/삭제 가능)
+  const [isAdmin, setIsAdmin] = useState(false);
   // 삭제 확인 다이얼로그
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -274,6 +276,16 @@ export default function CommunityPostPage() {
         // 작성자 여부 확인
         if (user && postData.user_id === user.id) {
           setIsAuthor(true);
+        }
+
+        // 관리자 여부 확인
+        if (user) {
+          const { data: adminProfile } = await supabase
+            .from("profiles")
+            .select("is_admin")
+            .eq("id", user.id)
+            .single();
+          setIsAdmin(!!adminProfile?.is_admin);
         }
 
         // 게시글 데이터 변환
@@ -911,20 +923,36 @@ export default function CommunityPostPage() {
     router.push(`/community/${postId}/edit`);
   };
 
-  // 게시글 삭제
+  // 게시글 삭제 (작성자: Supabase 직접, 관리자: API 사용)
   const handleDelete = async () => {
-    if (!post || !supabase) return;
+    if (!post) return;
 
     try {
       setIsDeleting(true);
 
-      const { error } = await supabase
-        .from("communities")
-        .delete()
-        .eq("id", postId)
-        .eq("user_id", currentUser?.id); // 본인 게시글만 삭제 가능
+      if (isAdmin) {
+        // 관리자는 API로 삭제 (타인 게시글도 삭제 가능)
+        const response = await fetch(
+          `/dashboard/community/api/${postId}`,
+          { method: "DELETE" }
+        );
+        const result = await response.json();
 
-      if (error) throw error;
+        if (!response.ok) {
+          throw new Error(result.error || "삭제에 실패했습니다.");
+        }
+      } else if (supabase && currentUser) {
+        // 작성자는 본인 게시글만 Supabase로 삭제
+        const { error } = await supabase
+          .from("communities")
+          .delete()
+          .eq("id", postId)
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+      } else {
+        throw new Error("삭제 권한이 없습니다.");
+      }
 
       showToast("게시글이 삭제되었습니다.", "success");
       setTimeout(() => {
@@ -932,7 +960,10 @@ export default function CommunityPostPage() {
       }, 1000);
     } catch (error) {
       console.error("게시글 삭제 오류:", error);
-      showToast("게시글 삭제에 실패했습니다.", "error");
+      showToast(
+        error instanceof Error ? error.message : "게시글 삭제에 실패했습니다.",
+        "error"
+      );
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -1099,8 +1130,8 @@ export default function CommunityPostPage() {
                       <Share2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  {/* 작성자만 수정/삭제 버튼 표시 */}
-                  {isAuthor && (
+                  {/* 작성자 또는 관리자일 때 수정/삭제 버튼 표시 */}
+                  {(isAuthor || isAdmin) && (
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"

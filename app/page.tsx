@@ -15,6 +15,10 @@ import { NewsSection } from "./_components/news-section";
 import { DeepDiveSection } from "./_components/deep-dive-section";
 import { createClient } from "@/lib/supabase/client";
 import { NewsImage } from "./news/news-image";
+import {
+  getRandomPlaceholderLarge,
+  getRandomPlaceholderThumbnail,
+} from "@/lib/placeholder-image";
 
 // 뉴스 아이템 타입 정의
 type NewsItem = {
@@ -153,12 +157,12 @@ export default function Home() {
 
         // Supabase 데이터를 NewsCarousel 형식으로 변환
         const transformedNews: NewsItem[] = (newsData || []).map((news) => {
-          // 본문에서 첫 번째 이미지 추출 (우선순위: content 첫 이미지 > image_url > placeholder)
+          // 본문에서 첫 번째 이미지 추출 (우선순위: content 첫 이미지 > image_url > 랜덤 placeholder)
           const firstImageFromContent = getFirstImageFromContent(news.content);
           const thumbnailImage =
             firstImageFromContent ||
             news.image_url ||
-            "https://via.placeholder.com/800x600?text=No+Image";
+            getRandomPlaceholderLarge(news.id);
 
           return {
             id: news.id,
@@ -202,11 +206,11 @@ export default function Home() {
           const transformedAllNews: NewsItem[] = (allNewsData || []).map((news) => {
             // 본문에서 첫 번째 이미지 추출 (우선순위 1)
             const firstImageFromContent = getFirstImageFromContent(news.content);
-            // 본문에 이미지가 없을 때만 image_url 또는 placeholder 사용
+            // 본문에 이미지가 없을 때만 image_url 또는 랜덤 placeholder 사용
             const thumbnailImage =
               firstImageFromContent ||
               news.image_url ||
-              "https://via.placeholder.com/200x200?text=No+Image";
+              getRandomPlaceholderThumbnail(news.id);
 
             return {
               id: news.id,
@@ -228,7 +232,7 @@ export default function Home() {
             .order("created_at", { ascending: false });
 
           if (pickResult.error) {
-            console.error("PICK 뉴스 로드 오류:", pickResult.error);
+            // is_pick 컬럼이 없거나 RLS 등으로 인한 예상 가능한 오류 - 조용히 처리
             setPickNews([]);
           } else {
             // PICK 뉴스 데이터 변환
@@ -236,11 +240,11 @@ export default function Home() {
             const transformedPickNews: NewsItem[] = pickNewsData.map((news) => {
               // 본문에서 첫 번째 이미지 추출 (우선순위 1)
               const firstImageFromContent = getFirstImageFromContent(news.content);
-              // 본문에 이미지가 없을 때만 image_url 또는 placeholder 사용
+              // 본문에 이미지가 없을 때만 image_url 또는 랜덤 placeholder 사용
               const thumbnailImage =
                 firstImageFromContent ||
                 news.image_url ||
-                "https://via.placeholder.com/200x200?text=No+Image";
+                getRandomPlaceholderThumbnail(news.id);
 
               return {
                 id: news.id,
@@ -375,7 +379,7 @@ export default function Home() {
                               <div className="flex gap-4">
                                 {/* 썸네일 이미지 */}
                                 <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage src={news.image} alt={news.headline} />
+                                  <NewsImage src={news.image} alt={news.headline} newsId={news.id} />
                                 </div>
                                 {/* 제목과 시간 */}
                                 <div className="flex-1 flex flex-col justify-center min-w-0">
@@ -413,7 +417,7 @@ export default function Home() {
                               <div className="flex gap-4">
                                 {/* 썸네일 이미지 */}
                                 <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage src={news.image} alt={news.headline} />
+                                  <NewsImage src={news.image} alt={news.headline} newsId={news.id} />
                                 </div>
                                 {/* 제목과 시간 */}
                                 <div className="flex-1 flex flex-col justify-center min-w-0">

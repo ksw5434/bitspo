@@ -714,6 +714,7 @@ function DashboardCommunityPageContent() {
                   }
                   placeholder="게시글 내용을 입력하세요..."
                   editable={true}
+                  uploadImageUrl="/dashboard/community/api/upload-image"
                 />
               </div>
               <div>

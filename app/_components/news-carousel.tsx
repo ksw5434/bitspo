@@ -7,12 +7,10 @@ import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// 기본 placeholder 이미지 URL (안정적인 서비스 사용)
-const DEFAULT_PLACEHOLDER_IMAGE =
-  "https://via.placeholder.com/800x600?text=No+Image";
-const DEFAULT_PLACEHOLDER_IMAGE_SMALL =
-  "https://via.placeholder.com/400x300?text=No+Image";
+import {
+  getRandomPlaceholderLarge,
+  getRandomPlaceholderImage,
+} from "@/lib/placeholder-image";
 
 // 뉴스 아이템 타입 정의
 type NewsItem = {
@@ -141,14 +139,15 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
                         <img
                           src={group[0].image}
                           alt={group[0].headline}
+                          data-news-id={group[0].id}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                           loading="lazy"
                           onError={(e) => {
-                            // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
                             const target = e.target as HTMLImageElement;
-                            // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                            if (!target.src.includes("placeholder.com")) {
-                              target.src = DEFAULT_PLACEHOLDER_IMAGE;
+                            if (!target.src.includes("picsum.photos")) {
+                              target.src = getRandomPlaceholderLarge(
+                                target.dataset.newsId || "fallback"
+                              );
                             }
                           }}
                         />
@@ -194,17 +193,17 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
                                 <img
                                   src={news.image}
                                   alt={news.headline}
+                                  data-news-id={news.id}
                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                   loading="lazy"
                                   onError={(e) => {
-                                    // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
                                     const target = e.target as HTMLImageElement;
-                                    // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-                                    if (
-                                      !target.src.includes("placeholder.com")
-                                    ) {
-                                      target.src =
-                                        DEFAULT_PLACEHOLDER_IMAGE_SMALL;
+                                    if (!target.src.includes("picsum.photos")) {
+                                      target.src = getRandomPlaceholderImage(
+                                        target.dataset.newsId || "fallback",
+                                        400,
+                                        300
+                                      );
                                     }
                                   }}
                                 />

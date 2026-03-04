@@ -15,8 +15,12 @@ import {
   Volume2,
   Type,
   ArrowLeft,
+  Edit,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { getRandomPlaceholderImage } from "@/lib/placeholder-image";
 
 /**
  * 뉴스 타입 정의
@@ -68,6 +72,9 @@ export default function NewsDetailPage() {
   const [userReaction, setUserReaction] = useState<ReactionType | null>(null);
   // 관련 기사 상태 추가
   const [relatedNews, setRelatedNews] = useState<News[]>([]);
+  // 관리자 여부 (수정/삭제 버튼 표시용)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Supabase 클라이언트 생성
   const supabase = createClient();
@@ -92,6 +99,19 @@ export default function NewsDetailPage() {
         }
 
         setNews(newsData);
+
+        // 관리자 여부 확인 (로그인한 사용자만)
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: adminProfile } = await supabase
+            .from("profiles")
+            .select("is_admin")
+            .eq("id", user.id)
+            .single();
+          setIsAdmin(!!adminProfile?.is_admin);
+        }
 
         // 작성자 프로필 정보 조회
         if (newsData.author_id) {
@@ -165,11 +185,7 @@ export default function NewsDetailPage() {
           setRelatedNews([]);
         }
 
-        // 현재 사용자 확인 (공감 기능용)
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
+        // 현재 사용자 확인 (공감 기능용) - 위에서 이미 조회한 user 재사용
         if (user) {
           // 사용자의 공감 정보 조회 (추후 구현 가능)
           // const { data: reactionData } = await supabase
@@ -269,6 +285,34 @@ export default function NewsDetailPage() {
     // TODO: Supabase에 반응 저장
   };
 
+  // 관리자: 뉴스 수정 (뉴스 관리 페이지로 이동)
+  const handleEdit = () => {
+    router.push(`/news?edit=${newsId}`);
+  };
+
+  // 관리자: 뉴스 삭제
+  const handleDelete = async () => {
+    if (!confirm("이 뉴스를 삭제하시겠습니까?")) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/news/api/${newsId}`, { method: "DELETE" });
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("뉴스가 삭제되었습니다.");
+        router.push("/news");
+      } else {
+        alert(result.error || "삭제에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("뉴스 삭제 오류:", error);
+      alert("삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // 공유하기
   const handleShare = async () => {
     if (navigator.share) {
@@ -310,8 +354,8 @@ export default function NewsDetailPage() {
 
   return (
     <div className="bg-card rounded-lg p-6">
-        {/* 뒤로가기 버튼 */}
-        <div className="mb-4">
+        {/* 뒤로가기 및 관리자용 수정/삭제 버튼 */}
+        <div className="mb-4 flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => router.back()}
@@ -320,6 +364,33 @@ export default function NewsDetailPage() {
             <ArrowLeft className="w-4 h-4" />
             뒤로
           </Button>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEdit}
+                className="gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                수정
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="gap-2"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                삭제
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* 기사 제목 */}
@@ -434,24 +505,23 @@ export default function NewsDetailPage() {
           </button>
         </div>
 
-        {/* 본문 이미지 */}
-        {news.image_url && (
-          <div className="mb-8">
-            <img
-              src={news.image_url}
-              alt={news.headline}
-              className="w-full h-auto rounded-lg object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = "none";
-              }}
-            />
-            {/* 이미지 캡션 (선택사항) */}
-            <p className="text-sm text-muted-foreground mt-2 text-center">
-              {news.headline}
-            </p>
-          </div>
-        )}
+        {/* 본문 이미지 - 없으면 랜덤 placeholder 표시 */}
+        <div className="mb-8">
+          <img
+            src={news.image_url || getRandomPlaceholderImage(newsId, 800, 600)}
+            alt={news.headline}
+            className="w-full h-auto rounded-lg object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes("picsum.photos")) {
+                target.src = getRandomPlaceholderImage(newsId, 800, 600);
+              }
+            }}
+          />
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            {news.headline}
+          </p>
+        </div>
 
         {/* 본문 내용 */}
         {news.content && (
@@ -524,20 +594,27 @@ export default function NewsDetailPage() {
                   className="block group hover:bg-muted/50 rounded-lg p-3 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    {/* 썸네일 이미지 */}
-                    {relatedItem.image_url && (
-                      <div className="shrink-0 w-24 h-16 rounded overflow-hidden">
-                        <img
-                          src={relatedItem.image_url}
-                          alt={relatedItem.headline}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = "none";
-                          }}
-                        />
-                      </div>
-                    )}
+                    {/* 썸네일 이미지 - 없으면 랜덤 placeholder */}
+                    <div className="shrink-0 w-24 h-16 rounded overflow-hidden">
+                      <img
+                        src={
+                          relatedItem.image_url ||
+                          getRandomPlaceholderImage(relatedItem.id, 96, 64)
+                        }
+                        alt={relatedItem.headline}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (!target.src.includes("picsum.photos")) {
+                            target.src = getRandomPlaceholderImage(
+                              relatedItem.id,
+                              96,
+                              64
+                            );
+                          }
+                        }}
+                      />
+                    </div>
                     {/* 제목 및 날짜 */}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-base line-clamp-2 group-hover:text-primary transition-colors mb-1">

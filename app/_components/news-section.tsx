@@ -41,7 +41,7 @@ export function NewsSection({ newsItems }: NewsSectionProps) {
                 </div>
                 {/* 이미지 */}
                 <div className="size-16">
-                  <NewsImage src={news.image} alt={news.headline} />
+                  <NewsImage src={news.image} alt={news.headline} newsId={`ranking-${news.rank}`} />
                 </div>
               </div>
             </CardContent>

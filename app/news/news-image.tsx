@@ -1,25 +1,25 @@
 "use client";
 
+import { getRandomPlaceholderThumbnail } from "@/lib/placeholder-image";
+
 /**
  * 뉴스 이미지 컴포넌트
- * 이미지 로드 실패 시 대체 이미지로 자동 변경
+ * 이미지 로드 실패 시 랜덤 placeholder 이미지로 자동 변경
  */
-
-// 기본 placeholder 이미지 URL (안정적인 서비스 사용)
-const DEFAULT_PLACEHOLDER_IMAGE = "https://via.placeholder.com/200x200?text=No+Image";
 
 interface NewsImageProps {
   src: string;
   alt: string;
+  /** 뉴스 ID - 로드 실패 시 동일 뉴스에 일관된 랜덤 이미지 표시 */
+  newsId?: string;
 }
 
-export function NewsImage({ src, alt }: NewsImageProps) {
+export function NewsImage({ src, alt, newsId }: NewsImageProps) {
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    // 이미지 로드 실패 시 대체 이미지로 변경 (무한 루프 방지)
     const target = e.target as HTMLImageElement;
-    // 이미 대체 이미지인 경우 더 이상 변경하지 않음
-    if (!target.src.includes('placeholder.com')) {
-      target.src = DEFAULT_PLACEHOLDER_IMAGE;
+    // picsum.photos 이미지로 이미 대체된 경우 무한 루프 방지
+    if (!target.src.includes("picsum.photos")) {
+      target.src = getRandomPlaceholderThumbnail(newsId || `fallback-${Date.now()}`);
     }
   };
 

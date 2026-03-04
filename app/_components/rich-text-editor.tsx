@@ -36,6 +36,8 @@ interface RichTextEditorProps {
   onChange?: (content: string) => void; // 콘텐츠 변경 시 호출되는 콜백
   placeholder?: string; // 플레이스홀더 텍스트
   editable?: boolean; // 편집 가능 여부 (기본값: true)
+  /** 이미지 업로드 API 경로 (페이지별로 다른 엔드포인트 사용) */
+  uploadImageUrl?: string;
 }
 
 export interface RichTextEditorRef {
@@ -51,6 +53,7 @@ export const RichTextEditor = forwardRef<
     onChange,
     placeholder = "내용을 입력하세요...",
     editable = true,
+    uploadImageUrl = "/news/api/upload-image",
   },
   ref,
 ) {
@@ -58,6 +61,8 @@ export const RichTextEditor = forwardRef<
   const [isMounted, setIsMounted] = useState(false);
   // 이미지 업로드 로딩 상태
   const [isUploading, setIsUploading] = useState(false);
+  // 드래그 오버 상태 (드래그 앤 드롭 시각적 피드백)
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // 클라이언트에서만 마운트되도록 설정
   useEffect(() => {
@@ -71,7 +76,7 @@ export const RichTextEditor = forwardRef<
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/dashboard/news/api/upload-image", {
+      const response = await fetch(uploadImageUrl, {
         method: "POST",
         body: formData,
       });
@@ -96,7 +101,7 @@ export const RichTextEditor = forwardRef<
     } finally {
       setIsUploading(false);
     }
-  }, []);
+  }, [uploadImageUrl]);
 
   // 에디터 인스턴스 생성 (클라이언트에서만 초기화)
   const editor = useEditor({
@@ -135,20 +140,42 @@ export const RichTextEditor = forwardRef<
       onChange?.(html);
     },
     editorProps: {
-      // 이미지 드래그 앤 드롭 처리
+      // 파일 드래그 오버 시 기본 동작 방지 (드롭 허용에 필요)
+      handleDragOver: (view, event) => {
+        if (event.dataTransfer?.types?.includes("Files")) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
+        }
+      },
+      // 이미지 드래그 앤 드롭 처리 - 업로드 후 드롭 위치에 삽입
       handleDrop: (view, event, slice, moved) => {
         if (
           !moved &&
-          event.dataTransfer &&
-          event.dataTransfer.files &&
+          event.dataTransfer?.files?.length &&
           event.dataTransfer.files[0]
         ) {
           const file = event.dataTransfer.files[0];
           if (file.type.startsWith("image/")) {
             event.preventDefault();
+            event.stopPropagation();
+            setIsDraggingOver(false);
+            // 드롭 위치 저장 (비동기 업로드 완료 후 사용)
+            const pos = view.posAtCoords({
+              left: event.clientX,
+              top: event.clientY,
+            });
             handleImageUpload(file).then((url) => {
               if (url && editor) {
-                editor.chain().focus().setImage({ src: url }).run();
+                // 드롭한 위치에 이미지 삽입 (위치 없으면 현재 커서에)
+                const insertPos = pos?.pos ?? editor.state.selection.from;
+                editor
+                  .chain()
+                  .focus()
+                  .insertContentAt(insertPos, {
+                    type: "image",
+                    attrs: { src: url },
+                  })
+                  .run();
               }
             });
             return true;
@@ -438,11 +465,36 @@ export const RichTextEditor = forwardRef<
         </div>
       )}
 
-      {/* 에디터 영역 */}
+      {/* 에디터 영역 - 드래그 앤 드롭 지원 */}
       <div
-        className={`relative ${editable ? "p-4 min-h-[300px]" : ""} prose prose-sm max-w-none`}
+        className={`relative ${editable ? "p-4 min-h-[300px]" : ""} prose prose-sm max-w-none ${
+          isDraggingOver ? "ring-2 ring-primary ring-inset rounded-b-lg" : ""
+        }`}
+        onDragOver={(e) => {
+          if (editable && e.dataTransfer?.types?.includes("Files")) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            setIsDraggingOver(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setIsDraggingOver(false);
+          }
+        }}
+        onDrop={() => setIsDraggingOver(false)}
       >
         <EditorContent editor={editor} />
+        {/* 드래그 오버 시 안내 문구 */}
+        {isDraggingOver && editable && (
+          <div className="absolute inset-0 bg-primary/5 flex items-center justify-center z-10 rounded-b-lg pointer-events-none border-2 border-dashed border-primary/50">
+            <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <ImageIcon className="w-10 h-10 text-primary" />
+              <span>이미지를 여기에 놓으세요</span>
+            </div>
+          </div>
+        )}
+        {/* 업로드 중 로딩 오버레이 */}
         {isUploading && (
           <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-b-lg">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
