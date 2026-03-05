@@ -144,13 +144,12 @@ export default function Home() {
       try {
         setIsLoadingNews(true);
 
-        // 뉴스 목록 조회 (최신순, PICK 뉴스 우선)
-        // is_pick이 true인 뉴스 또는 최신 뉴스 중 상위 9개 가져오기
+        // 뉴스 목록 조회 (최신순, 최대 15개)
         const { data: newsData, error } = await supabase
           .from("news")
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(9); // PICK 뉴스는 최대 9개 (3개씩 3그룹)
+          .limit(15);
 
         if (error) {
           console.error("뉴스 로드 오류:", error);
@@ -285,10 +284,12 @@ export default function Home() {
     loadRealtimeNews();
   }, [supabase]);
 
-  // mainPickNews를 3개씩 묶어서 newsGroups 생성
+  // mainPickNews를 3의 배수만 표시 (4,5개→3개, 6개→6개, 8개→6개 등)
+  const displayCount = Math.floor(mainPickNews.length / 3) * 3;
+  const displayNews = mainPickNews.slice(0, displayCount);
   const newsGroups: NewsItem[][] = [];
-  for (let i = 0; i < mainPickNews.length; i += 3) {
-    newsGroups.push(mainPickNews.slice(i, i + 3));
+  for (let i = 0; i < displayNews.length; i += 3) {
+    newsGroups.push(displayNews.slice(i, i + 3));
   }
 
   return (
