@@ -70,7 +70,7 @@ export function MarketTickerBar() {
                 {item.label}
               </span>
               <span
-                className={`truncate text-sm font-semibold tabular-nums sm:text-base ${
+                className={`truncate text-xs font-semibold tabular-nums sm:text-sm ${
                   isRefreshing
                     ? "text-foreground/80"
                     : "text-foreground"
