@@ -111,7 +111,7 @@ export default function RootLayout({
         ></script>
       </head>
       <body
-        className={`${roboto.variable} antialiased nav-padding-top`}
+        className={`${roboto.variable} antialiased`}
         suppressHydrationWarning
       >
         <Header />

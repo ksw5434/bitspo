@@ -45,7 +45,7 @@ export function HeaderSearchForm() {
       />
       <button
         type="submit"
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-foreground hover:text-primary transition-colors"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-foreground hover:text-primary transition-colors cursor-pointer"
         aria-label="검색 실행"
       >
         <Search className="h-4 w-4" />

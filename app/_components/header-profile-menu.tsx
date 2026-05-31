@@ -43,7 +43,7 @@ export function HeaderProfileMenu({
   getUserInitials,
 }: HeaderProfileMenuProps) {
   const profileButtonClassName =
-    "flex items-center gap-2 px-2 py-1 border border-border rounded-lg hover:bg-muted transition-colors relative shrink-0";
+    "flex items-center gap-2 px-2 py-1 border border-border rounded-lg hover:bg-muted transition-colors relative shrink-0 cursor-pointer";
 
   if (!mounted) {
     return (
@@ -101,7 +101,7 @@ export function HeaderProfileMenu({
               </div>
             )}
             <DropdownMenuItem asChild>
-              <Link href="/dashboard" className="flex items-center gap-2">
+              <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
                 <LayoutDashboard className="w-4 h-4" />
                 대시보드
               </Link>
@@ -109,20 +109,20 @@ export function HeaderProfileMenu({
             <DropdownMenuItem asChild>
               <Link
                 href="/dashboard/profile"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 cursor-pointer"
               >
                 <UserIcon className="w-4 h-4" />
                 프로필
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/news" className="flex items-center gap-2">
+              <Link href="/news" className="flex items-center gap-2 cursor-pointer">
                 <Newspaper className="w-4 h-4" />
                 뉴스
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/community" className="flex items-center gap-2">
+              <Link href="/community" className="flex items-center gap-2 cursor-pointer">
                 <Newspaper className="w-4 h-4" />
                 커뮤니티
               </Link>
@@ -139,12 +139,12 @@ export function HeaderProfileMenu({
         ) : (
           <>
             <DropdownMenuItem asChild>
-              <Link href="/auth/login" className="block w-full">
+              <Link href="/auth/login" className="block w-full cursor-pointer">
                 로그인
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/auth/signup" className="block w-full">
+              <Link href="/auth/signup" className="block w-full cursor-pointer">
                 회원가입
               </Link>
             </DropdownMenuItem>

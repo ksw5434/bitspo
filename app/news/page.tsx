@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense, useCallback } from "react";
+import { useEffect, useState, useRef, Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
@@ -12,7 +12,6 @@ import {
   RichTextEditorRef,
 } from "@/app/_components/rich-text-editor";
 import {
-  Newspaper,
   Plus,
   X,
   Image as ImageIcon,
@@ -20,6 +19,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { getRandomPlaceholderImage } from "@/lib/placeholder-image";
+import {
+  NewsSection,
+  type RankingNewsItem,
+} from "@/app/_components/news-section";
+import { TrendingCoinsSection } from "@/app/_components/trending-coins-section";
+import { NewsCardGrid } from "@/app/_components/news-card-grid";
+import { parseNewsTab, type NewsTab } from "@/lib/news-tabs";
 
 /**
  * 뉴스 타입 정의
@@ -30,13 +36,46 @@ interface News {
   content: string | null;
   image_url: string | null;
   author_id: string | null;
+  is_pick?: boolean | null;
   created_at: string;
   updated_at: string;
+  news_categories?: Array<{
+    category_id: string;
+    categories: {
+      id: string;
+      name: string;
+    } | null;
+  }>;
   author?: {
     id: string;
     name: string | null;
     avatar_url: string | null;
   };
+}
+
+/** 뉴스 카테고리명 목록 추출 */
+function getNewsCategoryNames(news: News): string[] {
+  return (news.news_categories ?? [])
+    .map((item) => item.categories?.name?.toLowerCase() ?? "")
+    .filter((name) => name.length > 0);
+}
+
+/** Sports News 여부 (is_pick 또는 스포츠 카테고리) */
+function isSportsNewsItem(news: News): boolean {
+  if (news.is_pick === true) {
+    return true;
+  }
+
+  return getNewsCategoryNames(news).some((name) => name.includes("sport"));
+}
+
+/** 탭별 뉴스 필터 */
+function filterNewsByTab(newsList: News[], tab: NewsTab): News[] {
+  if (tab === "sports") {
+    return newsList.filter(isSportsNewsItem);
+  }
+
+  return newsList.filter((news) => !isSportsNewsItem(news));
 }
 
 /**
@@ -72,8 +111,11 @@ function EditQueryHandler({
         const newsToEdit = newsList.find((news) => news.id === editId);
         if (newsToEdit) {
           onEdit(newsToEdit);
-          // URL에서 쿼리 파라미터 제거
-          router.replace("/news");
+          // edit 파라미터만 제거 (탭 등 다른 쿼리는 유지)
+          const nextParams = new URLSearchParams(searchParams.toString());
+          nextParams.delete("edit");
+          const queryString = nextParams.toString();
+          router.replace(queryString ? `/news?${queryString}` : "/news");
         }
       }
     }
@@ -87,6 +129,8 @@ function EditQueryHandler({
  */
 function DashboardNewsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeNewsTab = parseNewsTab(searchParams.get("tab"));
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -112,40 +156,29 @@ function DashboardNewsPageContent() {
   // Supabase 클라이언트 생성
   const supabase = createClient();
 
-  // 관리자 권한 확인 및 뉴스 목록 로드
+  // 뉴스 목록 로드 (공개) + 관리자 권한 확인 (선택)
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 현재 사용자 확인
         const {
           data: { user },
-          error: authError,
         } = await supabase.auth.getUser();
 
-        if (!user || authError) {
-          router.push("/auth/login");
-          return;
+        // 로그인한 관리자만 작성·수정 UI 표시
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_admin")
+            .eq("id", user.id)
+            .single();
+
+          if (profile?.is_admin) {
+            setIsAdmin(true);
+            await loadCategories();
+          }
         }
 
-        // 관리자 권한 확인
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_admin")
-          .eq("id", user.id)
-          .single();
-
-        if (!profile?.is_admin) {
-          alert("관리자 권한이 필요합니다.");
-          router.push("/");
-          return;
-        }
-
-        setIsAdmin(true);
-
-        // 카테고리 목록 로드
-        await loadCategories();
-
-        // 뉴스 목록 로드
+        // 비로그인 사용자도 뉴스 목록 조회 가능
         await loadNews();
       } catch (error) {
         console.error("데이터 로드 오류:", error);
@@ -535,16 +568,37 @@ function DashboardNewsPageContent() {
     }
   };
 
-  // 날짜 포맷팅
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  // 상대 시간 포맷 (TOP News용)
+  const formatRelativeTime = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInMs = now.getTime() - date.getTime();
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+      if (diffInMinutes < 1) {
+        return "방금 전";
+      }
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes}분 전`;
+      }
+      if (diffInHours < 24) {
+        return `${diffInHours}시간 전`;
+      }
+      if (diffInDays < 7) {
+        return `${diffInDays}일 전`;
+      }
+
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${year}. ${month}. ${day}.`;
+    } catch (error) {
+      console.error("날짜 포맷팅 오류:", error);
+      return "날짜 불명";
+    }
   };
 
   // HTML 태그 제거 및 텍스트만 추출 (목록 미리보기용)
@@ -589,6 +643,28 @@ function DashboardNewsPageContent() {
     return null;
   };
 
+  // 탭별 표시 뉴스 (관리자는 전체 목록)
+  const displayedNewsList = useMemo(
+    () => (isAdmin ? newsList : filterNewsByTab(newsList, activeNewsTab)),
+    [isAdmin, newsList, activeNewsTab],
+  );
+
+  // 사이드바 TOP News (최신 5건)
+  const topNewsItems = useMemo<RankingNewsItem[]>(
+    () =>
+      displayedNewsList.slice(0, 5).map((news, index) => ({
+        rank: index + 1,
+        image:
+          getFirstImageFromContent(news.content) ||
+          news.image_url ||
+          getRandomPlaceholderImage(news.id, 200, 200),
+        headline: news.headline,
+        timestamp: formatRelativeTime(news.created_at),
+        href: `/news/${news.id}`,
+      })),
+    [displayedNewsList],
+  );
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -599,45 +675,42 @@ function DashboardNewsPageContent() {
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* URL 쿼리 ?edit=xxx 처리 - 뉴스 상세에서 수정 시 수정 폼 자동 오픈 */}
-      <EditQueryHandler
-        isAdmin={isAdmin}
-        newsList={newsList}
-        onEdit={handleEdit}
-        router={router}
-      />
-      {/* 페이지 헤더 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Newspaper className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold">뉴스 관리</h1>
+      {/* URL 쿼리 ?edit=xxx 처리 - 관리자만 수정 폼 자동 오픈 */}
+      {isAdmin && (
+        <EditQueryHandler
+          isAdmin={isAdmin}
+          newsList={newsList}
+          onEdit={handleEdit}
+          router={router}
+        />
+      )}
+      {/* 관리자 페이지 헤더 */}
+      {isAdmin && (
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">뉴스 관리</h1>
+          <div className="flex gap-2">
+            {!showForm && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCategoryManager(!showCategoryManager)}
+                >
+                  <Tag className="w-4 h-4 mr-2" />
+                  카테고리 관리
+                </Button>
+                <Button onClick={() => setShowForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {!showForm && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setShowCategoryManager(!showCategoryManager)}
-              >
-                <Tag className="w-4 h-4 mr-2" />
-                카테고리 관리
-              </Button>
-              <Button onClick={() => setShowForm(true)}>
-                <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* 카테고리 관리 섹션 */}
-      {showCategoryManager && (
+      {/* 카테고리 관리 섹션 (관리자 전용) */}
+      {isAdmin && showCategoryManager && (
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -706,7 +779,7 @@ function DashboardNewsPageContent() {
                   {categories.map((category) => (
                     <div
                       key={category.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
                         <Tag className="w-4 h-4 text-muted-foreground" />
@@ -733,8 +806,8 @@ function DashboardNewsPageContent() {
         </Card>
       )}
 
-      {/* 작성/수정 폼 */}
-      {showForm && (
+      {/* 작성/수정 폼 (관리자 전용) */}
+      {isAdmin && showForm && (
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -831,89 +904,40 @@ function DashboardNewsPageContent() {
         </Card>
       )}
 
-      {/* 뉴스 목록 - 카드 그리드 레이아웃 */}
-      <div>
-        {newsList.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground mb-4">게시글이 없음</p>
-              {!showForm && (
-                <Button onClick={() => setShowForm(true)}>
-                  <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {newsList.map((news) => {
-              // 본문에서 첫 번째 이미지 추출, 없으면 image_url, 없으면 랜덤 placeholder
-              const thumbnailImage =
-                getFirstImageFromContent(news.content) ||
-                news.image_url ||
-                getRandomPlaceholderImage(news.id, 400, 300);
+      {/* 7:3 레이아웃 — 왼쪽 뉴스 기사, 오른쪽 TOP News + Trending Coins */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        {/* 뉴스 기사 (7) */}
+        <section className="lg:col-span-7 space-y-10">
+          {displayedNewsList.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground mb-4">
+                  {isAdmin
+                    ? "게시글이 없음"
+                    : activeNewsTab === "sports"
+                      ? "표시할 Sports News가 없습니다."
+                      : "표시할 Crypto Insights가 없습니다."}
+                </p>
+                {isAdmin && !showForm && (
+                  <Button onClick={() => setShowForm(true)}>
+                    <Plus className="w-4 h-4 mr-2" />새 뉴스 작성
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <NewsCardGrid newsItems={displayedNewsList} />
+          )}
+        </section>
 
-              return (
-                <Card
-                  key={news.id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
-                  onClick={() => router.push(`/news/${news.id}`)}
-                >
-                  {/* 이미지 영역 - 카드 상단 대부분 차지 */}
-                  <div className="relative w-full aspect-4/3 overflow-hidden bg-muted">
-                    <img
-                      src={thumbnailImage}
-                      alt={news.headline}
-                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (!target.src.includes("picsum.photos")) {
-                          target.src = getRandomPlaceholderImage(
-                            news.id,
-                            400,
-                            300
-                          );
-                        }
-                      }}
-                    />
-                  </div>
-
-                {/* 내용 영역 */}
-                <CardContent className="p-4 flex-1 flex flex-col">
-                  {/* 기사 제목 */}
-                  <h3 className="text-base font-semibold mb-3 line-clamp-2 text-foreground leading-snug">
-                    {news.headline}
-                  </h3>
-
-                  {/* 기자 정보 - 하단 */}
-                  <div className="mt-auto flex items-center gap-2">
-                    {news.author?.avatar_url ? (
-                      <img
-                        src={news.author.avatar_url}
-                        alt={news.author.name || "기자"}
-                        className="w-6 h-6 rounded-full object-cover shrink-0"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {news.author?.name?.[0] || "?"}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-xs text-muted-foreground truncate">
-                      {news.author?.name || "익명"} 기자
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              );
-            })}
-          </div>
-        )}
+        {/* 사이드바 (3) — TOP News, Trending Coins 세로 배치 */}
+        <aside className="lg:col-span-3 space-y-4 lg:sticky lg:top-[calc(var(--news-tabs-height,2.5rem)+0.75rem)] lg:self-start">
+          <NewsSection
+            newsItems={topNewsItems}
+            showPagination={false}
+          />
+          <TrendingCoinsSection />
+        </aside>
       </div>
     </div>
   );

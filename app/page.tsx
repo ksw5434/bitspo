@@ -14,7 +14,6 @@ import { NewsSection } from "./_components/news-section";
 import { DeepDiveSection } from "./_components/deep-dive-section";
 import { createClient } from "@/lib/supabase/client";
 import { ClientOnlyDate } from "./_components/client-only-date";
-import { MarketTickerBar } from "./_components/market-ticker-bar";
 import { RealtimeNewsList } from "./_components/realtime-news-list";
 import {
   getRandomPlaceholderLarge,
@@ -295,9 +294,6 @@ export default function Home() {
 
   return (
     <div className="bg-muted">
-      {/* 메뉴와 Sports News 사이 실시간 시세 바 */}
-      <MarketTickerBar />
-
       <div className="container mx-auto space-y-4 py-4">
         {/* 메인 페이지 제목 (SEO를 위한 H1 태그) */}
         <h1 className="sr-only">비트스포 - 암호화폐 온라인 스포츠</h1>
@@ -330,7 +326,7 @@ export default function Home() {
           </div>
 
           {/* 오른쪽: TOP News 섹션 */}
-          <NewsSection newsItems={rankingNews} />
+          <NewsSection newsItems={rankingNews} className="lg:col-span-1" />
         </div>
 
         {/* 딥다이브 섹션 */}
@@ -383,7 +379,7 @@ export default function Home() {
           </div>
 
           {/* 오른쪽: 사이드바 (1/3) */}
-          <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-[calc(var(--navigation-height)+12px)] lg:self-start">
+          <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-3 lg:self-start">
             {/* Trending Coins */}
             <div className="bg-card rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">Trending Coins</h3>
@@ -431,10 +427,10 @@ export default function Home() {
                   <span className="text-gray-400">▼</span>
                 </div>
                 <div className="flex items-center gap-4 pt-4">
-                  <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <button className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
                     📤
                   </button>
-                  <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <button className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer">
                     ✕
                   </button>
                 </div>

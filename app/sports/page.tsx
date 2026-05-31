@@ -1,17 +1,21 @@
-import type { Metadata } from "next";
-import { SectionPlaceholderPage } from "../_components/section-placeholder-page";
+import { Suspense } from "react";
+import { SportsPageContent } from "./sports-page-content";
 
-export const metadata: Metadata = {
-  title: "Sports",
-  description:
-    "스포츠 뉴스, 경기 일정, 분석 콘텐츠를 제공하는 비트스포 Sports 섹션입니다.",
-};
-
+/**
+ * Sports 페이지 — 상단 7:3 뉴스 레이아웃 + 하단 Scores
+ */
 export default function SportsPage() {
   return (
-    <SectionPlaceholderPage
-      title="Sports"
-      description="스포츠 최신 소식, 경기 하이라이트, 전문가 분석을 한곳에서 만나보세요."
-    />
+    <Suspense
+      fallback={
+        <main className="container mx-auto w-full max-w-7xl px-4 py-8">
+          <div className="flex h-64 items-center justify-center">
+            <p className="text-muted-foreground">로딩 중...</p>
+          </div>
+        </main>
+      }
+    >
+      <SportsPageContent />
+    </Suspense>
   );
 }

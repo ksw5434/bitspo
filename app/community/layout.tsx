@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bitspo.com";
@@ -57,7 +58,17 @@ export default function CommunityLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center bg-muted">
+          <p className="text-muted-foreground">커뮤니티를 불러오는 중...</p>
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
 }
 
 

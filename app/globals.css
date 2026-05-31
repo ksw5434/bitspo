@@ -127,6 +127,25 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* 클릭 가능한 요소에 포인터 커서 적용 */
+  a[href],
+  summary {
+    @apply cursor-pointer;
+  }
+
+  button:not(:disabled):not([disabled]),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  label[for]:not([aria-disabled="true"]) {
+    @apply cursor-pointer;
+  }
+
+  button:disabled,
+  button[disabled],
+  [aria-disabled="true"] {
+    @apply cursor-not-allowed;
+  }
 }
 
 .container {

@@ -26,6 +26,7 @@ import {
   AvatarImage,
   AvatarFallback,
 } from "@/app/_components/ui/avatar";
+import { isGuestbookPost } from "@/lib/community-tabs";
 
 // 게시글 타입 정의
 interface Post {
@@ -1086,7 +1087,7 @@ export default function CommunityPostPage() {
 
                 {/* 본문 내용 */}
                 <div className="prose max-w-none">
-                  {post.image_url && (
+                  {post.image_url && !isGuestbookPost(post.category) && (
                     <div className="mb-6">
                       <img
                         src={post.image_url}
@@ -1282,7 +1283,7 @@ export default function CommunityPostPage() {
           </div>
 
           {/* 사이드바 (1/3) */}
-          <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-[calc(var(--navigation-height)+12px)] lg:self-start">
+          <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-3 lg:self-start">
             {/* 작성자 정보 카드 */}
             {post && (
               <Card className="bg-card">
@@ -1346,9 +1347,9 @@ export default function CommunityPostPage() {
                               <Link
                                 key={authorPost.id}
                                 href={`/community/${authorPost.id}`}
-                                className="block group"
+                                className="block group cursor-pointer"
                               >
-                                <div className="flex rounded-lgitems-center justify-between py-1 px-2 border  hover:bg-muted/50 transition-colors">
+                                <div className="flex rounded-lgitems-center justify-between py-1 px-2 border hover:bg-muted/50 transition-colors cursor-pointer">
                                   {/* 게시글 제목 */}
                                   <h4 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
                                     {authorPost.title}
@@ -1382,9 +1383,9 @@ export default function CommunityPostPage() {
                                 <Link
                                   key={comment.id}
                                   href={`/community/${comment.community_id}`}
-                                  className="block group"
+                                  className="block group cursor-pointer"
                                 >
-                                  <div className="flex items-center justify-between gap-2 py-1 px-2 border rounded-lg hover:bg-muted/50 transition-colors">
+                                  <div className="flex items-center justify-between gap-2 py-1 px-2 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                                     {/* 댓글 내용 */}
                                     <p className="text-sm text-muted-foreground line-clamp-2">
                                       {comment.content}

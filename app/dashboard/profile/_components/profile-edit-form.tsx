@@ -313,7 +313,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         href={profile.social_links.twitter}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-primary hover:underline cursor-pointer"
                       >
                         {profile.social_links.twitter}
                       </a>
@@ -347,7 +347,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         href={profile.social_links.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-primary hover:underline cursor-pointer"
                       >
                         {profile.social_links.linkedin}
                       </a>
@@ -381,7 +381,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                         href={profile.social_links.github}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-primary hover:underline cursor-pointer"
                       >
                         {profile.social_links.github}
                       </a>

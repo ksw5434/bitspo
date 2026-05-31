@@ -131,7 +131,7 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
                 {group[0] && (
                   <Link
                     href={group[0].id ? `/news/${group[0].id}` : "#"}
-                    className="block"
+                    className="block cursor-pointer"
                   >
                     <Card className="overflow-hidden py-0 relative group cursor-pointer hover:shadow-lg transition-shadow">
                       <div className="relative h-80">
@@ -183,7 +183,7 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
                       <Link
                         key={index + 1}
                         href={news.id ? `/news/${news.id}` : "#"}
-                        className="block"
+                        className="block cursor-pointer"
                       >
                         <Card className="overflow-hidden py-0 group cursor-pointer hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
@@ -259,7 +259,7 @@ export function NewsCarousel({ newsGroups }: NewsCarouselProps) {
                 startAutoplay();
               }}
               className={cn(
-                "h-2 rounded-full transition-all",
+                "h-2 rounded-full transition-all cursor-pointer",
                 index === selectedIndex
                   ? "w-8 bg-primary"
                   : "w-2 bg-muted hover:bg-muted/80"

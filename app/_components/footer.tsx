@@ -11,7 +11,7 @@ export default function Footer() {
         {/* 상단: 로고 및 주요 링크 */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           {/* 로고 */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center cursor-pointer">
             <img
               src="/logo_w.png"
               alt="비트스포 로고"
@@ -38,7 +38,7 @@ export default function Footer() {
                 )}
                 <Link
                   href={menu.path}
-                  className="hover:text-foreground transition-colors"
+                  className="hover:text-foreground transition-colors cursor-pointer"
                 >
                   {menu.label}
                 </Link>
@@ -59,28 +59,28 @@ export default function Footer() {
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href="/notice"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     공지사항
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/reporters"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     기자소개
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/careers"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     인재채용
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/community-policy"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     커뮤니티 운영정책
                   </Link>
@@ -89,28 +89,28 @@ export default function Footer() {
                 <div className="flex flex-wrap gap-2">
                   <Link
                     href="/terms"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     이용약관
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/privacy"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     개인정보처리방침
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/ethics"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     윤리강령
                   </Link>
                   <span className="text-muted-foreground/50">|</span>
                   <Link
                     href="/youth-protection"
-                    className="hover:text-foreground transition-colors"
+                    className="hover:text-foreground transition-colors cursor-pointer"
                   >
                     청소년보호정책
                   </Link>
@@ -123,7 +123,7 @@ export default function Footer() {
                     문의사항{" "}
                     <a
                       href="mailto:help@bitspo.io"
-                      className="text-foreground hover:text-primary transition-colors"
+                      className="text-foreground hover:text-primary transition-colors cursor-pointer"
                     >
                       help@gmail.com
                     </a>
@@ -138,7 +138,7 @@ export default function Footer() {
               <div className="flex items-center gap-4">
                 <button
                   type="button"
-                  className="text-muted-foreground/70 hover:text-muted-foreground transition-colors text-xl"
+                  className="text-muted-foreground/70 hover:text-muted-foreground transition-colors text-xl cursor-pointer"
                   aria-label="공유하기"
                   title="공유하기"
                 >
@@ -146,7 +146,7 @@ export default function Footer() {
                 </button>
                 <button
                   type="button"
-                  className="text-muted-foreground/70 hover:text-muted-foreground transition-colors text-xl"
+                  className="text-muted-foreground/70 hover:text-muted-foreground transition-colors text-xl cursor-pointer"
                   aria-label="닫기"
                   title="닫기"
                 >

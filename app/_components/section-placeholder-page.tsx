@@ -18,7 +18,7 @@ export function SectionPlaceholderPage({
   description,
 }: SectionPlaceholderPageProps) {
   const otherSections = MAIN_NAV_ITEMS.filter(
-    (item) => item.label !== title && item.path !== "/",
+    (item) => item.label !== title,
   );
 
   return (
@@ -34,7 +34,7 @@ export function SectionPlaceholderPage({
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button asChild>
-            <Link href="/">News 홈으로</Link>
+            <Link href="/news">News 홈으로</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/community">Community</Link>
@@ -55,7 +55,7 @@ export function SectionPlaceholderPage({
                 )}
                 <Link
                   href={item.path}
-                  className="hover:text-foreground transition-colors"
+                  className="hover:text-foreground transition-colors cursor-pointer"
                 >
                   {item.label}
                 </Link>

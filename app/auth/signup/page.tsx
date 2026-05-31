@@ -394,7 +394,7 @@ export default function SignupPage() {
               이미 계정이 있으신가요?{" "}
               <Link
                 href="/auth/login"
-                className="text-primary hover:underline font-medium"
+                className="text-primary hover:underline font-medium cursor-pointer"
               >
                 로그인
               </Link>

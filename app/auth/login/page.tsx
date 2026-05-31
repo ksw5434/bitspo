@@ -305,7 +305,7 @@ export default function LoginPage() {
               계정이 없으신가요?{" "}
               <Link
                 href="/auth/signup"
-                className="text-primary hover:underline font-medium"
+                className="text-primary hover:underline font-medium cursor-pointer"
               >
                 회원가입
               </Link>

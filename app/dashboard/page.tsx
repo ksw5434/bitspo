@@ -171,7 +171,7 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <a
               href="/profile"
-              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
             >
               <UserIcon className="w-5 h-5 text-primary" />
               <div>
@@ -184,7 +184,7 @@ export default async function DashboardPage() {
 
             <a
               href="/community"
-              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
             >
               <Activity className="w-5 h-5 text-primary" />
               <div>
@@ -197,7 +197,7 @@ export default async function DashboardPage() {
 
             <a
               href="/"
-              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors"
+              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-muted transition-colors cursor-pointer"
             >
               <TrendingUp className="w-5 h-5 text-primary" />
               <div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  MARKET_TICKER_LABELS,
+  DEFAULT_MARKET_TICKER_ITEMS,
   type MarketTickerItem,
   type MarketTickerResponse,
 } from "@/lib/market-ticker";
@@ -10,27 +10,21 @@ import {
 /** 클라이언트 폴링 간격 (ms) — CoinGecko 무료 한도 고려 */
 const TICKER_REFRESH_MS = 30_000;
 
-const PLACEHOLDER_ITEMS: MarketTickerItem[] = MARKET_TICKER_LABELS.map(
-  (label, index) => ({
-    id: `placeholder-${index}`,
-    label,
-    value: "—",
-    raw: null,
-  }),
-);
-
 /**
  * 메뉴 하단 · Sports News 상단 시장 티커 바
  * /api/market-ticker 를 주기적으로 호출해 시세를 갱신합니다.
  */
 export function MarketTickerBar() {
-  const [tickerItems, setTickerItems] =
-    useState<MarketTickerItem[]>(PLACEHOLDER_ITEMS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [tickerItems, setTickerItems] = useState<MarketTickerItem[]>(
+    DEFAULT_MARKET_TICKER_ITEMS,
+  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchTicker = useCallback(async () => {
     try {
+      setIsRefreshing(true);
+
       const response = await fetch("/api/market-ticker", {
         cache: "no-store",
       });
@@ -53,7 +47,7 @@ export function MarketTickerBar() {
       console.error("티커 조회 오류:", error);
       setLoadError("시세를 불러오지 못했습니다. 잠시 후 다시 시도합니다.");
     } finally {
-      setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
@@ -77,12 +71,12 @@ export function MarketTickerBar() {
               </span>
               <span
                 className={`truncate text-sm font-semibold tabular-nums sm:text-base ${
-                  isLoading
-                    ? "animate-pulse text-muted-foreground"
+                  isRefreshing
+                    ? "text-foreground/80"
                     : "text-foreground"
                 }`}
                 aria-live="polite"
-                aria-busy={isLoading}
+                aria-busy={isRefreshing}
               >
                 {item.value}
               </span>

@@ -7,11 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
 import { Card, CardContent } from "@/app/_components/ui/card";
 import { Input } from "@/app/_components/ui/input";
+import { Textarea } from "@/app/_components/ui/textarea";
 import {
   RichTextEditor,
   RichTextEditorRef,
 } from "@/app/_components/rich-text-editor";
-import { ChevronLeft, X, Image as ImageIcon, Tag, Loader2 } from "lucide-react";
+import { GUESTBOOK_CATEGORY } from "@/lib/community-tabs";
+import { ChevronLeft, X, Image as ImageIcon, Loader2 } from "lucide-react";
 
 // 카테고리 옵션
 const CATEGORIES = [
@@ -33,6 +35,7 @@ function CommunityWriteContent() {
   const searchParams = useSearchParams();
   const supabase = createClient();
   const editorRef = useRef<RichTextEditorRef>(null);
+  const isGuestbookMode = searchParams.get("tab") === "guestbook";
 
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -385,8 +388,9 @@ function CommunityWriteContent() {
       setIsLoading(true);
 
       // 게시글 작성
-      // 이미지 URL이 없거나 빈 문자열인 경우 null로 처리 (선택사항)
-      const imageUrl = formData.image_url?.trim() || null;
+      const imageUrl = isGuestbookMode
+        ? null
+        : formData.image_url?.trim() || null;
 
       const { data, error } = await supabase
         .from("communities")
@@ -394,8 +398,8 @@ function CommunityWriteContent() {
           user_id: currentUser.id,
           title: formData.title.trim(),
           content: formData.content.trim(),
-          category: formData.category || null,
-          tags: formData.tags.length > 0 ? formData.tags : [],
+          category: isGuestbookMode ? GUESTBOOK_CATEGORY : formData.category || null,
+          tags: isGuestbookMode ? [] : formData.tags.length > 0 ? formData.tags : [],
           image_url: imageUrl,
         })
         .select()
@@ -407,10 +411,15 @@ function CommunityWriteContent() {
       }
 
       if (data) {
-        showToast("게시글이 작성되었습니다.", "success");
-        // 작성 완료 후 상세 페이지로 이동
+        showToast(
+          isGuestbookMode ? "방명록이 등록되었습니다." : "게시글이 작성되었습니다.",
+          "success",
+        );
+        // 작성 완료 후 이동
         setTimeout(() => {
-          router.push(`/community/${data.id}`);
+          router.push(
+            isGuestbookMode ? "/community?tab=guestbook" : `/community/${data.id}`,
+          );
         }, 1000);
       }
     } catch (error) {
@@ -448,13 +457,22 @@ function CommunityWriteContent() {
             <ChevronLeft className="w-4 h-4 mr-2" />
             뒤로가기
           </Button>
-          <h1 className="text-2xl font-semibold">게시글 작성</h1>
+          <h1 className="text-2xl font-semibold">
+            {isGuestbookMode ? "방명록 작성" : "게시글 작성"}
+          </h1>
         </div>
 
         {/* 작성 폼 */}
         <Card className="bg-card">
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {isGuestbookMode && (
+                <p className="text-sm text-muted-foreground">
+                  방명록은 텍스트만 작성할 수 있습니다. 이미지는 첨부할 수
+                  없습니다.
+                </p>
+              )}
+
               {/* 제목 */}
               <div>
                 <label
@@ -478,7 +496,8 @@ function CommunityWriteContent() {
                 </p>
               </div>
 
-              {/* 카테고리 */}
+              {/* 카테고리 — Discussion 전용 */}
+              {!isGuestbookMode && (
               <div>
                 <label className="block text-sm font-medium mb-2">
                   카테고리
@@ -498,8 +517,10 @@ function CommunityWriteContent() {
                   ))}
                 </select>
               </div>
+              )}
 
-              {/* 태그 */}
+              {/* 태그 — Discussion 전용 */}
+              {!isGuestbookMode && (
               <div>
                 <label className="block text-sm font-medium mb-2">태그</label>
                 {isLoadingTags ? (
@@ -513,7 +534,7 @@ function CommunityWriteContent() {
                         key={tag}
                         type="button"
                         onClick={() => handleTagToggle(tag)}
-                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
                           formData.tags.includes(tag)
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -556,7 +577,7 @@ function CommunityWriteContent() {
                         <button
                           type="button"
                           onClick={() => handleTagToggle(tag)}
-                          className="hover:text-destructive"
+                          className="hover:text-destructive cursor-pointer"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -565,8 +586,10 @@ function CommunityWriteContent() {
                   </div>
                 )}
               </div>
+              )}
 
-              {/* 이미지 */}
+              {/* 대표 이미지 — Discussion 전용 */}
+              {!isGuestbookMode && (
               <div>
                 <label className="block text-sm font-medium mb-2">
                   대표 이미지{" "}
@@ -624,12 +647,26 @@ function CommunityWriteContent() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* 본문 내용 */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   내용 <span className="text-destructive">*</span>
                 </label>
+                {isGuestbookMode ? (
+                  <Textarea
+                    id="content"
+                    value={formData.content}
+                    onChange={(e) =>
+                      setFormData({ ...formData, content: e.target.value })
+                    }
+                    placeholder="방명록 내용을 입력하세요..."
+                    rows={8}
+                    required
+                    className="min-h-40 resize-y"
+                  />
+                ) : (
                 <RichTextEditor
                   ref={editorRef}
                   content={formData.content}
@@ -640,6 +677,7 @@ function CommunityWriteContent() {
                   editable={true}
                   uploadImageUrl="/community/api/upload-image"
                 />
+                )}
               </div>
 
               {/* 제출 버튼 */}

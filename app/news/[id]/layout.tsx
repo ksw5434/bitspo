@@ -150,7 +150,7 @@ export default function NewsDetailLayout({
           <div className="lg:col-span-2">{children}</div>
 
           {/* 사이드바 영역 (1/3) - 모바일에서는 아래로 배치 */}
-          <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-[calc(var(--navigation-height)+12px)] lg:self-start">
+          <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-3 lg:self-start">
             {/* Trending Coins */}
             <div className="bg-card rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">Trending Coins</h3>
@@ -214,10 +214,10 @@ export default function NewsDetailLayout({
                   <span className="text-gray-400">▼</span>
                 </div>
                 <div className="flex items-center gap-4 pt-4">
-                  <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                  <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
                     📤
                   </button>
-                  <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                  <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer">
                     ✕
                   </button>
                 </div>

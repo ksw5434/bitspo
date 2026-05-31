@@ -125,8 +125,8 @@ function SearchPageContent() {
           <h2 className="text-lg font-semibold">News</h2>
           <div className="space-y-2">
             {newsResults.map((news) => (
-              <Link key={news.id} href={`/news/${news.id}`}>
-                <Card className="hover:bg-muted/50 transition-colors">
+              <Link key={news.id} href={`/news/${news.id}`} className="block cursor-pointer">
+                <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                   <CardContent className="py-3">
                     <p className="font-medium">{news.headline}</p>
                   </CardContent>
@@ -142,8 +142,8 @@ function SearchPageContent() {
           <h2 className="text-lg font-semibold">Community</h2>
           <div className="space-y-2">
             {communityResults.map((post) => (
-              <Link key={post.id} href={`/community/${post.id}`}>
-                <Card className="hover:bg-muted/50 transition-colors">
+              <Link key={post.id} href={`/community/${post.id}`} className="block cursor-pointer">
+                <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                   <CardContent className="py-3">
                     <p className="font-medium">{post.title}</p>
                   </CardContent>
@@ -158,7 +158,7 @@ function SearchPageContent() {
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="text-sm text-primary hover:underline"
+          className="text-sm text-primary hover:underline cursor-pointer"
         >
           홈으로 돌아가기
         </button>

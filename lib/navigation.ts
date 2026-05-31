@@ -2,7 +2,7 @@
  * 메인 네비게이션 메뉴 (헤더·푸터 공통)
  */
 export const MAIN_NAV_ITEMS = [
-  { label: "News", path: "/" },
+  { label: "News", path: "/news" },
   { label: "Sports", path: "/sports" },
   { label: "Crypto", path: "/crypto" },
   { label: "Bet", path: "/bet" },

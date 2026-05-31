@@ -396,7 +396,7 @@ export default function CommunityEditPage() {
                       key={tag}
                       type="button"
                       onClick={() => handleTagToggle(tag)}
-                      className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
                         formData.tags.includes(tag)
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -430,7 +430,7 @@ export default function CommunityEditPage() {
                         <button
                           type="button"
                           onClick={() => handleTagToggle(tag)}
-                          className="hover:text-destructive"
+                          className="hover:text-destructive cursor-pointer"
                         >
                           <X className="w-3 h-3" />
                         </button>

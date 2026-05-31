@@ -100,7 +100,7 @@ export function RealtimeNewsList({
     <>
       <div className="space-y-4">
         {displayedNews.map((news) => (
-          <Link key={news.id} href={`/news/${news.id}`}>
+          <Link key={news.id} href={`/news/${news.id}`} className="cursor-pointer">
             <Card className="hover:shadow-md transition-shadow cursor-pointer border-none shadow-none bg-transparent">
               <CardContent className="p-0">
                 <div className="flex gap-4">

@@ -8,6 +8,12 @@ import type { User } from "@supabase/supabase-js";
 import { MAIN_NAV_ITEMS } from "@/lib/navigation";
 import { HeaderSearchForm } from "./header-search-form";
 import { HeaderProfileMenu } from "./header-profile-menu";
+import { MarketTickerBar } from "./market-ticker-bar";
+import { HeaderNewsTabs } from "./header-news-tabs";
+import { HeaderSportsTabs } from "./header-sports-tabs";
+import { HeaderBetTabs } from "./header-bet-tabs";
+import { HeaderCommunityTabs } from "./header-community-tabs";
+import { HeaderCryptoTabs } from "./header-crypto-tabs";
 
 export default function Header() {
   const navRef = useRef<HTMLElement>(null);
@@ -149,83 +155,97 @@ export default function Header() {
   };
 
   return (
-    <nav
-      ref={navRef}
-      className="fixed top-0 left-0 right-0 z-50 flex flex-col border-b border-border bg-card/50 backdrop-blur"
-    >
-      <div className="container w-full px-2 py-2">
-        <div className="flex items-stretch gap-3 sm:gap-4">
-          {/* 기존 로고 이미지 유지 */}
-          <Link
-            href="/"
-            className="flex shrink-0 items-center self-center py-1"
-            aria-label="비트스포 홈"
-          >
-            <img
-              src="/logo_w.png"
-              alt="비트스포 로고"
-              className="h-12 w-auto"
-              onError={(event) => {
-                const imageElement = event.currentTarget;
-                if (imageElement.src.includes("simbol.png")) return;
-                imageElement.src = "/simbol.png";
-              }}
-            />
-          </Link>
-
-          {/* 메뉴 + 검색 + 프로필 */}
-          <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
-            <div className="flex items-center justify-between gap-3">
-              <nav
-                className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
-                aria-label="메인 메뉴"
-              >
-                {MAIN_NAV_ITEMS.map((menu, menuIndex) => (
-                  <Fragment key={menu.path}>
-                    {menuIndex > 0 && (
-                      <span
-                        className="text-muted-foreground/40 select-none"
-                        aria-hidden
-                      >
-                        |
-                      </span>
-                    )}
-                    <Link
-                      href={menu.path}
-                      className="font-medium whitespace-nowrap hover:text-foreground transition-colors"
-                    >
-                      {menu.label}
-                    </Link>
-                  </Fragment>
-                ))}
-              </nav>
-
-              <HeaderProfileMenu
-                mounted={mounted}
-                user={user}
-                userProfile={userProfile}
-                isLoading={isLoading}
-                isDropdownOpen={isDropdownOpen}
-                onDropdownOpenChange={setIsDropdownOpen}
-                onLogout={handleLogout}
-                getUserInitials={getUserInitials}
-              />
-            </div>
-
-            {/* 메뉴 바로 아래 검색창 */}
-            <Suspense
-              fallback={
-                <div
-                  className="h-9 w-full rounded-sm border border-primary/40 bg-muted/30 animate-pulse"
-                  aria-hidden
-                />
-              }
+    <>
+      <nav
+        ref={navRef}
+        className="relative z-50 flex flex-col border-b border-border bg-card/50 backdrop-blur"
+      >
+        <div className="container w-full px-2 py-2">
+          <div className="flex items-stretch gap-3 sm:gap-4">
+            {/* 기존 로고 이미지 유지 */}
+            <Link
+              href="/"
+              className="flex shrink-0 items-center self-center py-1 cursor-pointer"
+              aria-label="비트스포 홈"
             >
-              <HeaderSearchForm />
-            </Suspense>
+              <img
+                src="/logo_w.png"
+                alt="비트스포 로고"
+                className="h-12 w-auto"
+                onError={(event) => {
+                  const imageElement = event.currentTarget;
+                  if (imageElement.src.includes("simbol.png")) return;
+                  imageElement.src = "/simbol.png";
+                }}
+              />
+            </Link>
+
+            {/* 메뉴 + 검색 + 프로필 */}
+            <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
+              <div className="flex items-center justify-between gap-3">
+                <nav
+                  className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+                  aria-label="메인 메뉴"
+                >
+                  {MAIN_NAV_ITEMS.map((menu, menuIndex) => (
+                    <Fragment key={menu.path}>
+                      {menuIndex > 0 && (
+                        <span
+                          className="text-muted-foreground/40 select-none"
+                          aria-hidden
+                        >
+                          |
+                        </span>
+                      )}
+                      <Link
+                        href={menu.path}
+                        className="font-medium whitespace-nowrap hover:text-foreground transition-colors cursor-pointer"
+                      >
+                        {menu.label}
+                      </Link>
+                    </Fragment>
+                  ))}
+                </nav>
+
+                <HeaderProfileMenu
+                  mounted={mounted}
+                  user={user}
+                  userProfile={userProfile}
+                  isLoading={isLoading}
+                  isDropdownOpen={isDropdownOpen}
+                  onDropdownOpenChange={setIsDropdownOpen}
+                  onLogout={handleLogout}
+                  getUserInitials={getUserInitials}
+                />
+              </div>
+
+              {/* 메뉴 바로 아래 검색창 */}
+              <Suspense
+                fallback={
+                  <div
+                    className="h-9 w-full rounded-sm border border-primary/40 bg-muted/30 animate-pulse"
+                    aria-hidden
+                  />
+                }
+              >
+                <HeaderSearchForm />
+              </Suspense>
+            </div>
           </div>
         </div>
-      </div>
-    </nav>
+
+        {/* 메뉴·검색 아래 실시간 시세 바 (모든 페이지 공통) */}
+        <MarketTickerBar />
+      </nav>
+
+      {/* /news, /sports, /crypto, /bet, /community 전용 서브 탭 */}
+      <Suspense fallback={null}>
+        <HeaderNewsTabs />
+        <HeaderSportsTabs />
+        <HeaderCryptoTabs />
+        <HeaderBetTabs />
+        <HeaderCommunityTabs />
+      </Suspense>
+    </>
   );
 }

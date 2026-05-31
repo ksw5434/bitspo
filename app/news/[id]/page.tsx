@@ -411,7 +411,7 @@ export default function NewsDetailPage() {
             {/* 좋아요 */}
             <button
               onClick={() => handleReaction("like")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
                 userReaction === "like"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted hover:bg-muted/80"
@@ -426,7 +426,7 @@ export default function NewsDetailPage() {
             {/* 슬퍼요 */}
             <button
               onClick={() => handleReaction("sad")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
                 userReaction === "sad"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted hover:bg-muted/80"
@@ -441,7 +441,7 @@ export default function NewsDetailPage() {
             {/* 화나요 */}
             <button
               onClick={() => handleReaction("angry")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
                 userReaction === "angry"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted hover:bg-muted/80"
@@ -456,7 +456,7 @@ export default function NewsDetailPage() {
             {/* 팬이에요 */}
             <button
               onClick={() => handleReaction("fan")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
                 userReaction === "fan"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted hover:bg-muted/80"
@@ -471,7 +471,7 @@ export default function NewsDetailPage() {
             {/* 후속기사 원해요 */}
             <button
               onClick={() => handleReaction("follow")}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer ${
                 userReaction === "follow"
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted hover:bg-muted/80"
@@ -488,17 +488,17 @@ export default function NewsDetailPage() {
 
         {/* 유틸리티 버튼 (텍스트 음성 변환, 글자 크기 변경, 공유하기) */}
         <div className="flex items-center gap-4 mb-6 text-sm">
-          <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+          <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
             <Volume2 className="w-4 h-4" />
             <span>텍스트 음성 변환</span>
           </button>
-          <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+          <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
             <Type className="w-4 h-4" />
             <span>글자 크기 변경</span>
           </button>
           <button
             onClick={handleShare}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
             <span>공유하기</span>
@@ -566,10 +566,10 @@ export default function NewsDetailPage() {
                   <span className="text-sm text-muted-foreground">기자</span>
                 </div>
                 <div className="flex items-center gap-4 mt-1">
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     구독 0
                   </button>
-                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <button className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                     응원 0
                   </button>
                 </div>
@@ -587,7 +587,7 @@ export default function NewsDetailPage() {
                 <Link
                   key={relatedItem.id}
                   href={`/news/${relatedItem.id}`}
-                  className="block group hover:bg-muted/50 rounded-lg p-3 transition-colors"
+                  className="block group hover:bg-muted/50 rounded-lg p-3 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start gap-3">
                     {/* 썸네일 이미지 - 없으면 랜덤 placeholder */}
@@ -631,7 +631,7 @@ export default function NewsDetailPage() {
         <div className="border-t border-border pt-6 mt-6">
           <Link
             href="/news"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>뉴스 목록으로 돌아가기</span>

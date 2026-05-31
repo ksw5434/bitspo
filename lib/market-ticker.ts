@@ -103,6 +103,123 @@ export function formatKospiIndex(price: number): string {
   }).format(price);
 }
 
+/** 헤더 티커 기본값 (API 로드 전·조회 실패 시 표시) */
+export const DEFAULT_MARKET_TICKER_ITEMS: MarketTickerItem[] = [
+  {
+    id: "btc-usd",
+    label: "BTC/USD",
+    raw: 74091.0,
+    value: formatUsdPrice(74091.0),
+  },
+  {
+    id: "eth-usd",
+    label: "ETH/USD",
+    raw: 2031.02,
+    value: formatUsdPrice(2031.02),
+  },
+  {
+    id: "sol-usd",
+    label: "SOL/USD",
+    raw: 83.14,
+    value: formatUsdPrice(83.14),
+  },
+  {
+    id: "xrp-usd",
+    label: "XRP/USD",
+    raw: 1.34,
+    value: formatUsdPricePrecise(1.34),
+  },
+  {
+    id: "bnb-usd",
+    label: "BNB/USD",
+    raw: 733.08,
+    value: formatUsdPrice(733.08),
+  },
+  {
+    id: "doge-usd",
+    label: "DOGE/USD",
+    raw: 0.1011,
+    value: formatUsdPricePrecise(0.1011),
+  },
+  {
+    id: "ada-usd",
+    label: "ADA/USD",
+    raw: 0.2382,
+    value: formatUsdPricePrecise(0.2382),
+  },
+  {
+    id: "link-usd",
+    label: "LINK/USD",
+    raw: 9.24,
+    value: formatUsdPrice(9.24),
+  },
+  {
+    id: "usd-eur",
+    label: "USD/EUR",
+    raw: 0.8588,
+    value: formatUsdForexRate(0.8588),
+  },
+  {
+    id: "usd-gbp",
+    label: "USD/GBP",
+    raw: 0.7448,
+    value: formatUsdForexRate(0.7448),
+  },
+  {
+    id: "usd-jpy",
+    label: "USD/JPY",
+    raw: 159.27,
+    value: formatUsdJpyRate(159.27),
+  },
+  {
+    id: "usd-krw",
+    label: "USD/KRW",
+    raw: 1506,
+    value: formatUsdKrwRate(1506),
+  },
+  {
+    id: "nasdaq",
+    label: "NASDAQ",
+    raw: 26972.62,
+    value: formatIndexPrice(26972.62),
+  },
+  {
+    id: "sp500",
+    label: "S&P 500",
+    raw: 7580.06,
+    value: formatIndexPrice(7580.06),
+  },
+  {
+    id: "dow",
+    label: "Dow Jones",
+    raw: 51032.46,
+    value: formatIndexPrice(51032.46),
+  },
+  {
+    id: "kospi",
+    label: "KOSPI",
+    raw: 8476.15,
+    value: formatKospiIndex(8476.15),
+  },
+];
+
+/** API 조회 실패 항목을 기본값으로 보완 */
+export function mergeWithDefaultTickerItems(
+  items: MarketTickerItem[],
+): MarketTickerItem[] {
+  const defaultById = new Map(
+    DEFAULT_MARKET_TICKER_ITEMS.map((item) => [item.id, item]),
+  );
+
+  return items.map((item) => {
+    if (item.raw !== null) {
+      return item;
+    }
+
+    return defaultById.get(item.id) ?? item;
+  });
+}
+
 const COINGECKO_IDS = [
   "bitcoin",
   "ethereum",
@@ -325,7 +442,7 @@ export async function fetchMarketTickerData(): Promise<MarketTickerResponse> {
   const hasPartialError = items.some((item) => item.raw === null);
 
   return {
-    items,
+    items: mergeWithDefaultTickerItems(items),
     updatedAt: new Date().toISOString(),
     hasPartialError,
   };

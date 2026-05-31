@@ -1,17 +1,24 @@
-import type { Metadata } from "next";
-import { SectionPlaceholderPage } from "../_components/section-placeholder-page";
-
-export const metadata: Metadata = {
-  title: "Bet",
-  description:
-    "스포츠·암호화폐 베팅 인사이트와 가이드를 제공하는 비트스포 Bet 섹션입니다.",
-};
+import { Suspense } from "react";
+import { BET_TAB_DESCRIPTIONS } from "@/lib/bet-tabs";
+import { BetPageContent } from "./bet-page-content";
 
 export default function BetPage() {
   return (
-    <SectionPlaceholderPage
-      title="Bet"
-      description="베팅 전략, 오즈 분석, 리스크 가이드 등 인사이트 콘텐츠를 준비하고 있습니다."
-    />
+    <Suspense
+      fallback={
+        <main className="container mx-auto px-2 py-16">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Bet · Betting Sites
+            </h1>
+            <p className="text-muted-foreground leading-relaxed">
+              {BET_TAB_DESCRIPTIONS["betting-sites"]}
+            </p>
+          </div>
+        </main>
+      }
+    >
+      <BetPageContent />
+    </Suspense>
   );
 }
