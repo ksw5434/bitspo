@@ -15,7 +15,8 @@ export function getRandomPlaceholderImage(
   height = 600
 ): string {
   // newsId를 seed로 사용하여 동일 뉴스는 항상 같은 이미지
-  const seed = newsId || `fallback-${Date.now()}`;
+  // newsId 없을 때 Date.now() 사용 시 SSR/CSR URL 불일치 가능 → 고정 seed 사용
+  const seed = newsId || "fallback-placeholder";
   return `https://picsum.photos/seed/${seed}/${width}/${height}`;
 }
 

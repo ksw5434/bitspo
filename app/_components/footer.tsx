@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MAIN_NAV_ITEMS } from "@/lib/navigation";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -24,34 +25,26 @@ export default function Footer() {
           </Link>
 
           {/* 주요 메뉴 링크 */}
-          <div className="flex flex-wrap gap-4 text-sm">
-            <Link
-              href="/"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              뉴스
-            </Link>
-            <Link
-              href="/community"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              커뮤니티
-            </Link>
-            {/* TODO: 페이지 생성 후 주석 해제
-            <Link
-              href="/ai-report"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              AI리포트
-            </Link>
-            <Link
-              href="/membership"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              멤버십
-            </Link>
-            */}
-          </div>
+          <nav
+            className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+            aria-label="푸터 메뉴"
+          >
+            {MAIN_NAV_ITEMS.map((menu, menuIndex) => (
+              <span key={menu.path} className="inline-flex items-center gap-2">
+                {menuIndex > 0 && (
+                  <span className="text-muted-foreground/40" aria-hidden>
+                    |
+                  </span>
+                )}
+                <Link
+                  href={menu.path}
+                  className="hover:text-foreground transition-colors"
+                >
+                  {menu.label}
+                </Link>
+              </span>
+            ))}
+          </nav>
         </div>
 
         {/* 중간: 회사 정보 및 정책 링크 */}

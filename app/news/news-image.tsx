@@ -19,7 +19,9 @@ export function NewsImage({ src, alt, newsId }: NewsImageProps) {
     const target = e.target as HTMLImageElement;
     // picsum.photos 이미지로 이미 대체된 경우 무한 루프 방지
     if (!target.src.includes("picsum.photos")) {
-      target.src = getRandomPlaceholderThumbnail(newsId || `fallback-${Date.now()}`);
+      target.src = getRandomPlaceholderThumbnail(
+        newsId || "fallback-placeholder",
+      );
     }
   };
 

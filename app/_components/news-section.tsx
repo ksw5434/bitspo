@@ -2,7 +2,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { NewsImage } from "@/app/news/news-image";
 
-// 랭킹 뉴스 아이템 타입 정의
+// TOP News 아이템 타입 정의
 interface RankingNewsItem {
   rank: number;
   image: string;
@@ -18,7 +18,7 @@ interface NewsSectionProps {
 export function NewsSection({ newsItems }: NewsSectionProps) {
   return (
     <div className="lg:col-span-1 space-y-2 py-4 bg-card rounded-lg flex flex-col">
-      <h2 className="text-2xl font-bold px-4">랭킹 뉴스</h2>
+      <h2 className="text-2xl font-bold px-4">TOP News</h2>
       <div className="space-y-0 flex-1 flex flex-col">
         {newsItems.map((news) => (
           <Card

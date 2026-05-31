@@ -1,4 +1,4 @@
-// 랭킹 뉴스 데이터
+// TOP News 데이터
 export const rankingNews = [
   {
     rank: 1,

@@ -80,13 +80,9 @@ export function DeepDiveSection({ newsItems }: DeepDiveSectionProps) {
         <div className="flex gap-8 items-start">
           {/* 왼쪽 헤더 섹션 */}
           <div className="flex-shrink-0 w-80">
-            <div className="space-y-2 text-white">
-              <h3 className=" font-medium text-muted-foreground">
-                Only 비스트포
-              </h3>
-              <h2 className="text-2xl font-bold  leading-tight">
-                크립토 전문기자의 <br />
-                딥다이브를 모았어요!
+            <div className="text-white">
+              <h2 className="text-2xl font-bold leading-tight">
+                Crypto Insights
               </h2>
             </div>
           </div>

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Card, CardContent } from "./_components/ui/card";
+import { Card } from "./_components/ui/card";
 import {
   Tabs,
   TabsContent,
@@ -14,7 +13,9 @@ import { NewsCarousel } from "./_components/news-carousel";
 import { NewsSection } from "./_components/news-section";
 import { DeepDiveSection } from "./_components/deep-dive-section";
 import { createClient } from "@/lib/supabase/client";
-import { NewsImage } from "./news/news-image";
+import { ClientOnlyDate } from "./_components/client-only-date";
+import { MarketTickerBar } from "./_components/market-ticker-bar";
+import { RealtimeNewsList } from "./_components/realtime-news-list";
 import {
   getRandomPlaceholderLarge,
   getRandomPlaceholderThumbnail,
@@ -37,11 +38,11 @@ export default function Home() {
     return createClient();
   }, []);
 
-  // PICK 뉴스 데이터 상태
+  // Sports News(메인 캐러셀) 데이터 상태
   const [mainPickNews, setMainPickNews] = useState<NewsItem[]>([]);
   const [isLoadingNews, setIsLoadingNews] = useState(true);
 
-  // 실시간 뉴스 데이터 상태 (전체 및 PICK)
+  // 실시간 뉴스 데이터 상태 (전체 및 Sports News)
   const [allNews, setAllNews] = useState<NewsItem[]>([]);
   const [pickNews, setPickNews] = useState<NewsItem[]>([]);
   const [isLoadingRealtimeNews, setIsLoadingRealtimeNews] = useState(true);
@@ -187,7 +188,7 @@ export default function Home() {
     loadNews();
   }, [supabase]);
 
-  // 실시간 뉴스 데이터 가져오기 (전체 및 PICK)
+  // 실시간 뉴스 데이터 가져오기 (전체 및 Sports News)
   useEffect(() => {
     if (!supabase) return;
 
@@ -229,7 +230,7 @@ export default function Home() {
           setAllNews(transformedAllNews);
         }
 
-        // PICK 뉴스 조회 (is_pick이 true인 뉴스, 최신순)
+        // Sports News 조회 (is_pick이 true인 뉴스, 최신순)
         // is_pick 필드가 없을 수 있으므로 에러 처리
         try {
           const pickResult = await supabase
@@ -242,7 +243,7 @@ export default function Home() {
             // is_pick 컬럼이 없거나 RLS 등으로 인한 예상 가능한 오류 - 조용히 처리
             setPickNews([]);
           } else {
-            // PICK 뉴스 데이터 변환
+            // Sports News 데이터 변환
             const pickNewsData = pickResult.data || [];
             const transformedPickNews: NewsItem[] = pickNewsData.map((news) => {
               // 본문에서 첫 번째 이미지 추출 (우선순위 1)
@@ -267,7 +268,7 @@ export default function Home() {
         } catch (err) {
           // is_pick 필드가 없는 경우 빈 배열로 처리
           console.warn(
-            "PICK 뉴스 조회 실패 (is_pick 필드가 없을 수 있음):",
+            "Sports News 조회 실패 (is_pick 필드가 없을 수 있음):",
             err,
           );
           setPickNews([]);
@@ -293,18 +294,21 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-muted py-4 ">
-      <div className="container mx-auto space-y-4">
+    <div className="bg-muted">
+      {/* 메뉴와 Sports News 사이 실시간 시세 바 */}
+      <MarketTickerBar />
+
+      <div className="container mx-auto space-y-4 py-4">
         {/* 메인 페이지 제목 (SEO를 위한 H1 태그) */}
         <h1 className="sr-only">비트스포 - 암호화폐 온라인 스포츠</h1>
 
         {/* 메인 그리드 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-          {/* 왼쪽: PICK 뉴스 섹션 */}
+          {/* 왼쪽: Sports News 섹션 */}
           <div className="lg:col-span-2 rounded-lg bg-card flex flex-col">
             {/* 헤더 */}
             <div className="flex items-center justify-between pt-4 px-5">
-              <h2 className="text-2xl font-semibold">PICK 뉴스</h2>
+              <h2 className="text-2xl font-semibold">Sports News</h2>
             </div>
 
             {/* 뉴스 슬라이더 */}
@@ -325,7 +329,7 @@ export default function Home() {
             </Card>
           </div>
 
-          {/* 오른쪽: 랭킹 뉴스 섹션 */}
+          {/* 오른쪽: TOP News 섹션 */}
           <NewsSection newsItems={rankingNews} />
         </div>
 
@@ -338,7 +342,7 @@ export default function Home() {
           <div className="lg:col-span-2 bg-card rounded-lg p-6">
             {/* 헤더: 타이틀과 탭 */}
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold mb-4">실시간 뉴스</h2>
+              <h2 className="text-2xl font-semibold mb-4">Real-Time News</h2>
               <Tabs defaultValue="all" className="w-full">
                 <TabsList className="bg-transparent py-0 px-1 h-auto gap-6">
                   <TabsTrigger
@@ -351,122 +355,28 @@ export default function Home() {
                     value="pick"
                     className="cursor-pointer data-[state=active]:bg-transparent data-[state=active]:border-t-0 data-[state=active]:border-r-0 data-[state=active]:border-l-0 data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:rounded-none text-muted-foreground border-b-2 border-transparent px-0 pb-2"
                   >
-                    PICK
+                    Sports News
                   </TabsTrigger>
                 </TabsList>
                 {/* 탭 아래 구분선 */}
                 <div className="border-t border-gray-300/50 -translate-y-2.5"></div>
-                {/* 날짜 표시 */}
-                <div className="text-sm text-muted-foreground px-1">
-                  {(() => {
-                    const today = new Date();
-                    const year = today.getFullYear();
-                    const month = today.getMonth() + 1;
-                    const day = today.getDate();
-                    const weekdays = [
-                      "일요일",
-                      "월요일",
-                      "화요일",
-                      "수요일",
-                      "목요일",
-                      "금요일",
-                      "토요일",
-                    ];
-                    const weekday = weekdays[today.getDay()];
-                    return `오늘, ${year}. ${month}. ${day}. ${weekday}`;
-                  })()}
-                </div>
-                {/* 뉴스 리스트 - 전체 탭 */}
+                {/* 날짜 표시 (SSR/클라이언트 시간대 불일치로 인한 hydration 방지) */}
+                <ClientOnlyDate className="text-sm text-muted-foreground px-1" />
+                {/* 뉴스 리스트 - 전체 탭 (10개 단위 무한 스크롤) */}
                 <TabsContent value="all" className="mt-6">
-                  {isLoadingRealtimeNews ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
-                        뉴스를 불러오는 중...
-                      </p>
-                    </div>
-                  ) : allNews.length === 0 ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
-                        표시할 뉴스가 없습니다.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {allNews.map((news) => (
-                        <Link key={news.id} href={`/news/${news.id}`}>
-                          <Card className="hover:shadow-md transition-shadow cursor-pointer border-none shadow-none bg-transparent">
-                            <CardContent className="p-0">
-                              <div className="flex gap-4">
-                                {/* 썸네일 이미지 */}
-                                <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage
-                                    src={news.image}
-                                    alt={news.headline}
-                                    newsId={news.id}
-                                  />
-                                </div>
-                                {/* 제목과 시간 */}
-                                <div className="flex-1 flex flex-col justify-center min-w-0">
-                                  <h3 className="text-base font-semibold line-clamp-2 mb-2 text-foreground hover:text-primary transition-colors">
-                                    {news.headline}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {news.timestamp}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <RealtimeNewsList
+                    newsItems={allNews}
+                    isInitialLoading={isLoadingRealtimeNews}
+                    emptyMessage="표시할 뉴스가 없습니다."
+                  />
                 </TabsContent>
-                {/* 뉴스 리스트 - PICK 탭 */}
+                {/* 뉴스 리스트 - Sports News 탭 (10개 단위 무한 스크롤) */}
                 <TabsContent value="pick" className="mt-6">
-                  {isLoadingRealtimeNews ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
-                        뉴스를 불러오는 중...
-                      </p>
-                    </div>
-                  ) : pickNews.length === 0 ? (
-                    <div className="flex items-center justify-center py-12">
-                      <p className="text-muted-foreground">
-                        표시할 PICK 뉴스가 없습니다.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {pickNews.map((news) => (
-                        <Link key={news.id} href={`/news/${news.id}`}>
-                          <Card className="hover:shadow-md transition-shadow cursor-pointer border-none shadow-none bg-transparent">
-                            <CardContent className="p-0">
-                              <div className="flex gap-4">
-                                {/* 썸네일 이미지 */}
-                                <div className="shrink-0 w-24 h-24 rounded overflow-hidden bg-muted">
-                                  <NewsImage
-                                    src={news.image}
-                                    alt={news.headline}
-                                    newsId={news.id}
-                                  />
-                                </div>
-                                {/* 제목과 시간 */}
-                                <div className="flex-1 flex flex-col justify-center min-w-0">
-                                  <h3 className="text-base font-semibold line-clamp-2 mb-2 text-foreground hover:text-primary transition-colors">
-                                    {news.headline}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {news.timestamp}
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <RealtimeNewsList
+                    newsItems={pickNews}
+                    isInitialLoading={isLoadingRealtimeNews}
+                    emptyMessage="표시할 Sports News가 없습니다."
+                  />
                 </TabsContent>
               </Tabs>
             </div>
@@ -474,9 +384,9 @@ export default function Home() {
 
           {/* 오른쪽: 사이드바 (1/3) */}
           <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-[calc(var(--navigation-height)+12px)] lg:self-start">
-            {/* 조회수 급상승 코인 */}
+            {/* Trending Coins */}
             <div className="bg-card rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4">조회수 급상승 코인</h3>
+              <h3 className="text-lg font-semibold mb-4">Trending Coins</h3>
               <div className="flex flex-wrap gap-2">
                 {["SOL", "BTC", "USDT", "ONDO", "ETH"].map((coin) => (
                   <span

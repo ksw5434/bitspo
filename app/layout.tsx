@@ -102,7 +102,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" className="dark" suppressHydrationWarning>
       <head>
         <script
           src="https://analytics.ahrefs.com/analytics.js"
@@ -110,7 +110,10 @@ export default function RootLayout({
           async
         ></script>
       </head>
-      <body className={`${roboto.variable} antialiased pt-28`}>
+      <body
+        className={`${roboto.variable} antialiased nav-padding-top`}
+        suppressHydrationWarning
+      >
         <Header />
         {children}
         <Footer />

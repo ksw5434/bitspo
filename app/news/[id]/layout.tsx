@@ -151,9 +151,9 @@ export default function NewsDetailLayout({
 
           {/* 사이드바 영역 (1/3) - 모바일에서는 아래로 배치 */}
           <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-[calc(var(--navigation-height)+12px)] lg:self-start">
-            {/* 조회수 급상승 코인 */}
+            {/* Trending Coins */}
             <div className="bg-card rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4">조회수 급상승 코인</h3>
+              <h3 className="text-lg font-semibold mb-4">Trending Coins</h3>
               <div className="flex flex-wrap gap-2">
                 {["SOL", "BTC", "USDT", "ONDO", "ETH"].map((coin) => (
                   <span
