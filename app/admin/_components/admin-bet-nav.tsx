@@ -16,13 +16,9 @@ export function AdminBetNav() {
   const { isCollapsed } = useAdminSidebar();
 
   const [categories, setCategories] = useState<BetCategoryRecord[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const isBetSection = pathname?.startsWith("/admin/bet") ?? false;
-
-  useEffect(() => {
-    if (isBetSection && !isCollapsed) setExpanded(true);
-  }, [isBetSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;

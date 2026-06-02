@@ -1,205 +1,160 @@
-import { Card, CardContent } from "@/app/_components/ui/card";
+"use client";
 
-/** 경기 상태 (목업) */
-type MatchStatus = "live" | "final" | "scheduled";
-
-/** 스코어 카드 목업 데이터 */
-type MockScoreCard = {
-  id: string;
-  league: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  status: MatchStatus;
-  statusLabel: string;
-  matchTime: string;
-};
-
-/** 3×3 그리드용 목업 9경기 */
-const MOCK_SCORE_CARDS: MockScoreCard[] = [
-  {
-    id: "score-1",
-    league: "EPL",
-    homeTeam: "Arsenal",
-    awayTeam: "Chelsea",
-    homeScore: 2,
-    awayScore: 1,
-    status: "final",
-    statusLabel: "종료",
-    matchTime: "어제 22:30",
-  },
-  {
-    id: "score-2",
-    league: "La Liga",
-    homeTeam: "Barcelona",
-    awayTeam: "Real Madrid",
-    homeScore: 1,
-    awayScore: 1,
-    status: "live",
-    statusLabel: "LIVE",
-    matchTime: "67'",
-  },
-  {
-    id: "score-3",
-    league: "Serie A",
-    homeTeam: "Inter",
-    awayTeam: "Milan",
-    homeScore: null,
-    awayScore: null,
-    status: "scheduled",
-    statusLabel: "예정",
-    matchTime: "오늘 04:00",
-  },
-  {
-    id: "score-4",
-    league: "Bundesliga",
-    homeTeam: "Bayern",
-    awayTeam: "Dortmund",
-    homeScore: 3,
-    awayScore: 2,
-    status: "final",
-    statusLabel: "종료",
-    matchTime: "어제 01:30",
-  },
-  {
-    id: "score-5",
-    league: "Ligue 1",
-    homeTeam: "PSG",
-    awayTeam: "Lyon",
-    homeScore: 0,
-    awayScore: 0,
-    status: "live",
-    statusLabel: "LIVE",
-    matchTime: "23'",
-  },
-  {
-    id: "score-6",
-    league: "MLS",
-    homeTeam: "LA Galaxy",
-    awayTeam: "Inter Miami",
-    homeScore: null,
-    awayScore: null,
-    status: "scheduled",
-    statusLabel: "예정",
-    matchTime: "내일 11:00",
-  },
-  {
-    id: "score-7",
-    league: "K League 1",
-    homeTeam: "울산",
-    awayTeam: "전북",
-    homeScore: 2,
-    awayScore: 2,
-    status: "final",
-    statusLabel: "종료",
-    matchTime: "어제 19:00",
-  },
-  {
-    id: "score-8",
-    league: "UCL",
-    homeTeam: "Man City",
-    awayTeam: "PSG",
-    homeScore: 1,
-    awayScore: 0,
-    status: "live",
-    statusLabel: "LIVE",
-    matchTime: "82'",
-  },
-  {
-    id: "score-9",
-    league: "NBA",
-    homeTeam: "Lakers",
-    awayTeam: "Celtics",
-    homeScore: null,
-    awayScore: null,
-    status: "scheduled",
-    statusLabel: "예정",
-    matchTime: "오늘 12:30",
-  },
-];
-
-/** 상태별 뱃지 스타일 */
-function getStatusBadgeClassName(status: MatchStatus): string {
-  switch (status) {
-    case "live":
-      return "bg-red-500/15 text-red-600 dark:text-red-400";
-    case "final":
-      return "bg-muted text-muted-foreground";
-    case "scheduled":
-      return "bg-primary/10 text-primary";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-}
-
-/** 스코어 표시 (예정 경기는 VS) */
-function formatScoreDisplay(
-  homeScore: number | null,
-  awayScore: number | null,
-): string {
-  if (homeScore === null || awayScore === null) {
-    return "VS";
-  }
-  return `${homeScore} - ${awayScore}`;
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  filterScoreCardsByLeague,
+  resolveEspnLeagueFromSportsCategory,
+  type ScoreCard,
+} from "@/lib/espn-scores";
+import { ScoreboardGameCard } from "./scoreboard-game-card";
 
 interface ScoresSectionProps {
   className?: string;
+  categorySlug: string;
+  categoryName?: string;
 }
 
+const SCORES_POLL_INTERVAL_MS = 60_000;
+
 /**
- * Scores 섹션 (목업)
- * /sports 페이지 — 컨테이너 전체 너비 3×3 스코어 카드 그리드
+ * Scores — ESPN-style 2-column board (English), filtered by active sports tab
  */
-export function ScoresSection({ className = "" }: ScoresSectionProps) {
+export function ScoresSection({
+  className = "",
+  categorySlug,
+  categoryName,
+}: ScoresSectionProps) {
+  const [allMatches, setAllMatches] = useState<ScoreCard[]>([]);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasPartialError, setHasPartialError] = useState(false);
+
+  const activeLeague = useMemo(
+    () => resolveEspnLeagueFromSportsCategory(categorySlug, categoryName),
+    [categorySlug, categoryName],
+  );
+
+  const displayedMatches = useMemo(
+    () => filterScoreCardsByLeague(allMatches, activeLeague),
+    [allMatches, activeLeague],
+  );
+
+  const loadScores = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sports/scores");
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error ?? "Failed to load scores");
+      }
+
+      setAllMatches(json.items ?? []);
+      setUpdatedAt(json.updatedAt ?? null);
+      setHasPartialError(json.hasPartialError === true);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load scores");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    void loadScores();
+
+    const intervalId = setInterval(() => {
+      void loadScores();
+    }, SCORES_POLL_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [loadScores]);
+
+  const updatedLabel = updatedAt
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }).format(new Date(updatedAt))
+    : null;
+
+  const sectionTitle = activeLeague
+    ? `Scores · ${activeLeague}`
+    : `Scores · ${categoryName ?? categorySlug}`;
+
   return (
-    <section className={`w-full space-y-4 ${className}`.trim()} aria-label="Scores">
-      <div className="flex items-end justify-between gap-4">
-        <h2 className="text-2xl font-bold">Scores</h2>
-        <span className="text-xs text-muted-foreground">목업 데이터</span>
+    <section
+      className={cn("w-full space-y-4", className)}
+      aria-label={sectionTitle}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h2 className="text-2xl font-bold">{sectionTitle}</h2>
+        <div className="flex flex-col items-end gap-0.5 text-xs text-muted-foreground">
+          {activeLeague ? (
+            <span>ESPN · {activeLeague}</span>
+          ) : (
+            <span>Scores not available for this category</span>
+          )}
+          {updatedLabel && activeLeague && (
+            <span>Updated {updatedLabel} ET</span>
+          )}
+          {hasPartialError && activeLeague && (
+            <span className="text-amber-600 dark:text-amber-400">
+              Some leagues failed to load
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MOCK_SCORE_CARDS.map((match) => (
-          <Card
-            key={match.id}
-            className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow"
+      {!activeLeague ? (
+        <p className="text-center text-sm text-muted-foreground py-8 rounded-lg border border-dashed border-border">
+          Live scores are available on NBA, NFL, and MLB tabs only.
+        </p>
+      ) : isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-lg overflow-hidden divide-x divide-y divide-border bg-card">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={`score-skeleton-${index}`}
+              className="min-h-[8.5rem] p-4 space-y-3 animate-pulse"
+            >
+              <div className="h-3 w-2/3 rounded bg-muted" />
+              <div className="h-5 w-full rounded bg-muted" />
+              <div className="h-5 w-full rounded bg-muted" />
+            </div>
+          ))}
+        </div>
+      ) : error && displayedMatches.length === 0 ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-6 text-center text-sm text-destructive"
+        >
+          {error}
+          <button
+            type="button"
+            onClick={() => {
+              setIsLoading(true);
+              void loadScores();
+            }}
+            className="mt-3 block w-full underline-offset-4 hover:underline"
           >
-            <CardContent className="p-4 flex flex-col gap-3 h-full">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {match.league}
-                </span>
-                <span
-                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusBadgeClassName(match.status)}`}
-                >
-                  {match.status === "live" && (
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1 align-middle animate-pulse" />
-                  )}
-                  {match.statusLabel}
-                </span>
-              </div>
-
-              <div className="flex-1 space-y-2 min-w-0">
-                <p className="text-sm font-semibold truncate">{match.homeTeam}</p>
-                <p className="text-sm font-semibold truncate text-muted-foreground">
-                  {match.awayTeam}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                <span className="text-lg font-bold tabular-nums tracking-tight">
-                  {formatScoreDisplay(match.homeScore, match.awayScore)}
-                </span>
-                <time className="text-xs text-muted-foreground shrink-0">
-                  {match.matchTime}
-                </time>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            Try again
+          </button>
+        </div>
+      ) : displayedMatches.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-8">
+          No {activeLeague} games to display.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-lg overflow-hidden divide-x divide-y divide-border bg-card">
+          {displayedMatches.map((match) => (
+            <ScoreboardGameCard key={match.id} match={match} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

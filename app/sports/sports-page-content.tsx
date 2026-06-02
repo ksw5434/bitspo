@@ -208,7 +208,11 @@ export function SportsPageContent() {
         </aside>
       </div>
 
-      <ScoresSection className="w-full" />
+      <ScoresSection
+        className="w-full"
+        categorySlug={activeCategorySlug}
+        categoryName={activeCategoryName}
+      />
     </main>
   );
 }

@@ -16,13 +16,9 @@ export function AdminCryptoNav() {
   const { isCollapsed } = useAdminSidebar();
 
   const [categories, setCategories] = useState<CryptoCategoryRecord[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const isCryptoSection = pathname?.startsWith("/admin/crypto") ?? false;
-
-  useEffect(() => {
-    if (isCryptoSection && !isCollapsed) setExpanded(true);
-  }, [isCryptoSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;

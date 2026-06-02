@@ -16,13 +16,9 @@ export function AdminSportsNav() {
   const { isCollapsed } = useAdminSidebar();
 
   const [categories, setCategories] = useState<SportsCategoryRecord[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const isSportsSection = pathname?.startsWith("/admin/sports") ?? false;
-
-  useEffect(() => {
-    if (isSportsSection && !isCollapsed) setExpanded(true);
-  }, [isSportsSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;

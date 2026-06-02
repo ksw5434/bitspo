@@ -16,13 +16,9 @@ export function AdminNewsNav() {
   const { isCollapsed } = useAdminSidebar();
 
   const [categories, setCategories] = useState<NewsCategoryRecord[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const isNewsSection = pathname?.startsWith("/admin/news") ?? false;
-
-  useEffect(() => {
-    if (isNewsSection && !isCollapsed) setExpanded(true);
-  }, [isNewsSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;
