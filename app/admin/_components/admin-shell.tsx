@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   ChevronLeft,
@@ -10,11 +10,13 @@ import {
   ExternalLink,
   Flag,
   LayoutDashboard,
+  LogOut,
   Settings,
   Shield,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/app/_components/ui/button";
 import { AdminNewsNav } from "./admin-news-nav";
 import { AdminBetNav } from "./admin-bet-nav";
@@ -161,7 +163,8 @@ function AdminSidebar() {
         </Suspense>
       </nav>
 
-      <div className="border-t border-border p-2">
+      <div className="border-t border-border p-2 space-y-1">
+        <AdminLogoutButton isCollapsed={isCollapsed} />
         <Button
           type="button"
           variant="ghost"
@@ -185,7 +188,103 @@ function AdminSidebar() {
   );
 }
 
+/** 관리자 로그아웃 (Supabase signOut) */
+function AdminLogoutButton({
+  isCollapsed = false,
+  variant = "ghost",
+  fullWidth = true,
+}: {
+  isCollapsed?: boolean;
+  variant?: "ghost" | "outline";
+  fullWidth?: boolean;
+}) {
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        throw error;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("관리자 로그아웃 오류:", error);
+      alert("로그아웃 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [isLoggingOut, router]);
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={isCollapsed ? "icon" : "sm"}
+      className={cn(
+        fullWidth && "w-full",
+        variant === "ghost" && "text-muted-foreground hover:text-destructive",
+        isCollapsed && "size-9",
+      )}
+      onClick={() => void handleLogout()}
+      disabled={isLoggingOut}
+      aria-label="로그아웃"
+      title="로그아웃"
+    >
+      <LogOut className="size-4 shrink-0" aria-hidden />
+      {!isCollapsed && (
+        <span className="truncate">
+          {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
+        </span>
+      )}
+    </Button>
+  );
+}
+
 function AdminTopbar() {
+  const [adminDisplayName, setAdminDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user || cancelled) return;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", user.id)
+          .single();
+
+        if (!cancelled) {
+          setAdminDisplayName(profile?.name ?? user.email ?? null);
+        }
+      } catch {
+        // 프로필 없어도 로그아웃은 가능
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur">
       <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
@@ -193,8 +292,13 @@ function AdminTopbar() {
           <p className="text-sm text-muted-foreground">관리자 대시보드</p>
           <h1 className="truncate text-base font-semibold">운영 현황</h1>
         </div>
-        <div className="flex items-center gap-2">
-          {/* TODO: Supabase role 기반 관리자 인증을 붙일 때, 여기에 관리자 정보/로그아웃 UI를 추가 */}
+        <div className="flex shrink-0 items-center gap-2">
+          {adminDisplayName && (
+            <span className="hidden max-w-[10rem] truncate text-sm text-muted-foreground sm:inline">
+              {adminDisplayName}
+            </span>
+          )}
+          <AdminLogoutButton variant="outline" fullWidth={false} />
         </div>
       </div>
     </header>
