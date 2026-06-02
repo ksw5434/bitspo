@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, Suspense, useEffect, useRef, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -18,6 +18,12 @@ import { HeaderCryptoTabs } from "./header-crypto-tabs";
 export default function Header() {
   const navRef = useRef<HTMLElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // 관리자 페이지에서는 전용 레이아웃을 쓰기 때문에 공용 헤더를 숨김
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const supabase = useMemo(() => {
     if (typeof window === "undefined") {

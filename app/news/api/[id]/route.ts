@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncNewsSportsCategories } from "@/lib/news-sports-sync";
 
 /**
  * 뉴스 개별 조회 (GET)
@@ -51,6 +52,14 @@ export async function GET(
           categories (
             id,
             name
+          )
+        ),
+        news_sports_categories (
+          sports_category_id,
+          sports_categories (
+            id,
+            name,
+            slug
           )
         )
       `
@@ -124,7 +133,14 @@ export async function PUT(
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { headline, content, image_url, category_ids } = body;
+    const {
+      headline,
+      content,
+      image_url,
+      category_ids,
+      sports_category_ids,
+      publish_to_sports,
+    } = body;
 
     // 필수 필드 검증
     if (!headline || headline.trim() === "") {
@@ -135,23 +151,43 @@ export async function PUT(
     }
 
     // 뉴스 수정
-    const { data: news, error } = await supabase
+    const updatePayload: Record<string, unknown> = {
+      headline: headline.trim(),
+      content: content?.trim() || null,
+      image_url: image_url?.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (publish_to_sports === true) {
+      updatePayload.is_pick = true;
+    }
+
+    let { data: news, error } = await supabase
       .from("news")
-      .update({
-        headline: headline.trim(),
-        content: content?.trim() || null,
-        image_url: image_url?.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", newsId)
       .select()
       .single();
 
+    if (error?.message?.includes("is_pick")) {
+      delete updatePayload.is_pick;
+      ({ data: news, error } = await supabase
+        .from("news")
+        .update(updatePayload)
+        .eq("id", newsId)
+        .select()
+        .single());
+    }
+
     if (error) {
       console.error("뉴스 수정 오류:", error);
       return NextResponse.json(
-        { error: "뉴스 수정에 실패했습니다." },
-        { status: 500 }
+        {
+          error: error.message?.includes("is_pick")
+            ? "news.is_pick 컬럼이 없습니다. npm run db:push 를 실행해 주세요."
+            : "뉴스 수정에 실패했습니다.",
+        },
+        { status: 500 },
       );
     }
 
@@ -200,6 +236,8 @@ export async function PUT(
         }
       }
     }
+
+    await syncNewsSportsCategories(supabase, newsId, sports_category_ids);
 
     return NextResponse.json({ data: news });
   } catch (error) {

@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  NEWS_TAB_LABELS,
-  parseNewsTab,
-  type NewsTab,
+  FALLBACK_NEWS_CATEGORIES,
+  resolveActiveCategorySlug,
 } from "@/lib/news-tabs";
+import type { NewsCategoryRecord } from "@/lib/news-categories";
 import { MAIN_NAV_ITEMS } from "@/lib/navigation";
-
-const NEWS_TABS: NewsTab[] = ["sports", "crypto"];
 
 /** 메인 네비 News 메뉴 라벨 */
 const NEWS_SECTION_LABEL =
@@ -17,7 +15,7 @@ const NEWS_SECTION_LABEL =
 
 /**
  * /news 목록 페이지 전용 서브 탭 (헤더 하단, 스크롤 시 상단 고정)
- * News | Sports News | Crypto Insights — 컨테이너 내 왼쪽 정렬
+ * News | {동적 카테고리} — DB categories 기준
  */
 export function HeaderNewsTabs() {
   const tabsBarRef = useRef<HTMLDivElement>(null);
@@ -25,10 +23,38 @@ export function HeaderNewsTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 뉴스 상세(/news/[id])에서는 표시하지 않음
+  const [categories, setCategories] = useState<
+    Pick<NewsCategoryRecord, "id" | "name" | "slug">[]
+  >(FALLBACK_NEWS_CATEGORIES);
+
   const isNewsListPage = pathname === "/news";
 
-  // sticky 탭 바 높이 — 사이드바 등 하위 sticky 요소 offset에 사용
+  const activeCategorySlug = resolveActiveCategorySlug(
+    searchParams.get("category"),
+    searchParams.get("tab"),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/news/categories");
+        const json = await res.json();
+        if (!cancelled && res.ok && Array.isArray(json.data) && json.data.length > 0) {
+          setCategories(json.data);
+        }
+      } catch {
+        // 실패 시 FALLBACK 유지
+      }
+    }
+
+    void loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const tabsBarElement = tabsBarRef.current;
     if (!isNewsListPage || !tabsBarElement) {
@@ -52,31 +78,25 @@ export function HeaderNewsTabs() {
       resizeObserver.disconnect();
       document.documentElement.style.removeProperty("--news-tabs-height");
     };
-  }, [isNewsListPage]);
+  }, [isNewsListPage, categories.length]);
 
   if (!isNewsListPage) {
     return null;
   }
 
-  const activeNewsTab = parseNewsTab(searchParams.get("tab"));
-
-  const handleTabChange = (tab: NewsTab) => {
-    if (tab === activeNewsTab) {
-      return;
-    }
+  const handleCategoryChange = (slug: string) => {
+    if (slug === activeCategorySlug) return;
 
     const nextParams = new URLSearchParams(searchParams.toString());
-    if (tab === "sports") {
-      nextParams.delete("tab");
-    } else {
-      nextParams.set("tab", tab);
-    }
+    nextParams.delete("tab");
+    nextParams.set("category", slug);
 
-    const queryString = nextParams.toString();
-    router.replace(queryString ? `/news?${queryString}` : "/news", {
-      scroll: false,
-    });
+    router.replace(`/news?${nextParams.toString()}`, { scroll: false });
   };
+
+  const firstCategorySlug = categories[0]?.slug ?? null;
+  const resolvedSlug =
+    activeCategorySlug ?? firstCategorySlug ?? FALLBACK_NEWS_CATEGORIES[0].slug;
 
   return (
     <div
@@ -89,7 +109,6 @@ export function HeaderNewsTabs() {
           role="tablist"
           aria-label="뉴스 카테고리"
         >
-          {/* 메인 News 메뉴 표시 */}
           <span className="inline-flex items-center gap-2">
             <span className="font-semibold text-red-500 dark:text-red-400 whitespace-nowrap">
               {NEWS_SECTION_LABEL}
@@ -102,31 +121,35 @@ export function HeaderNewsTabs() {
             </span>
           </span>
 
-          {NEWS_TABS.map((tab, tabIndex) => (
-            <span key={tab} className="inline-flex items-center gap-2">
-              {tabIndex > 0 && (
-                <span
-                  className="text-muted-foreground/40 select-none"
-                  aria-hidden
+          {categories.map((category, index) => {
+            const isActive = resolvedSlug === category.slug;
+
+            return (
+              <span key={category.id} className="inline-flex items-center gap-2">
+                {index > 0 && (
+                  <span
+                    className="text-muted-foreground/40 select-none"
+                    aria-hidden
+                  >
+                    |
+                  </span>
+                )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleCategoryChange(category.slug)}
+                  className={`whitespace-nowrap transition-colors cursor-pointer ${
+                    isActive
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  |
-                </span>
-              )}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeNewsTab === tab}
-                onClick={() => handleTabChange(tab)}
-                className={`whitespace-nowrap transition-colors cursor-pointer ${
-                  activeNewsTab === tab
-                    ? "font-semibold text-foreground"
-                    : "font-medium text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {NEWS_TAB_LABELS[tab]}
-              </button>
-            </span>
-          ))}
+                  {category.name}
+                </button>
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>

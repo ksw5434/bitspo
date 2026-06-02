@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MAIN_NAV_ITEMS } from "@/lib/navigation";
 
 export default function Footer() {
+  const pathname = usePathname();
+  // 관리자 페이지에서는 전용 레이아웃을 쓰기 때문에 공용 푸터를 숨김
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   const currentYear = new Date().getFullYear();
   return (
     <footer className="bg-muted border-t border-border">

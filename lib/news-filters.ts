@@ -15,6 +15,14 @@ export type NewsWithCategories = {
       name: string;
     } | null;
   }>;
+  news_sports_categories?: Array<{
+    sports_category_id: string;
+    sports_categories: {
+      id: string;
+      name: string;
+      slug?: string | null;
+    } | null;
+  }>;
   author?: {
     id: string;
     name: string | null;
@@ -32,6 +40,10 @@ export function getNewsCategoryNames(news: NewsWithCategories): string[] {
 /** Sports News 여부 (is_pick 또는 스포츠 카테고리) */
 export function isSportsNewsItem(news: NewsWithCategories): boolean {
   if (news.is_pick === true) {
+    return true;
+  }
+
+  if ((news.news_sports_categories ?? []).length > 0) {
     return true;
   }
 

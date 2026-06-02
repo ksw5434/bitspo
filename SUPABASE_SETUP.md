@@ -59,7 +59,19 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 사용자 프로필 정보(이름, 아바타 URL)를 저장하기 위한 테이블을 생성합니다.
 
-### 스키마 파일 실행 방법
+### CLI로 마이그레이션 적용 (권장)
+
+스키마 변경·스포츠 카테고리 등은 `supabase/migrations/`에 정의되어 있습니다.
+
+```bash
+supabase login
+supabase link --project-ref <프로젝트_REF>
+npm run db:push
+```
+
+자세한 내용은 [SUPABASE_MIGRATIONS.md](./SUPABASE_MIGRATIONS.md)를 참고하세요.
+
+### 스키마 파일 실행 방법 (레거시)
 
 1. Supabase 대시보드에서 **SQL Editor**로 이동합니다.
 2. `lib/supabase/schema.sql` 파일의 내용을 복사하여 SQL Editor에 붙여넣습니다.

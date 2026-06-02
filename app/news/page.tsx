@@ -25,7 +25,15 @@ import {
 } from "@/app/_components/news-section";
 import { TrendingCoinsSection } from "@/app/_components/trending-coins-section";
 import { NewsCardGrid } from "@/app/_components/news-card-grid";
-import { parseNewsTab, type NewsTab } from "@/lib/news-tabs";
+import {
+  parseLegacyNewsTab,
+  resolveActiveCategorySlug,
+  type LegacyNewsTab,
+} from "@/lib/news-tabs";
+import {
+  categoryNameToSlug,
+  newsHasCategory,
+} from "@/lib/news-categories";
 
 /**
  * 뉴스 타입 정의
@@ -69,8 +77,8 @@ function isSportsNewsItem(news: News): boolean {
   return getNewsCategoryNames(news).some((name) => name.includes("sport"));
 }
 
-/** 탭별 뉴스 필터 */
-function filterNewsByTab(newsList: News[], tab: NewsTab): News[] {
+/** 레거시 탭별 뉴스 필터 (DB 카테고리 없을 때) */
+function filterNewsByLegacyTab(newsList: News[], tab: LegacyNewsTab): News[] {
   if (tab === "sports") {
     return newsList.filter(isSportsNewsItem);
   }
@@ -84,6 +92,7 @@ function filterNewsByTab(newsList: News[], tab: NewsTab): News[] {
 interface Category {
   id: string;
   name: string;
+  slug?: string;
   created_at: string;
   updated_at: string;
 }
@@ -130,7 +139,10 @@ function EditQueryHandler({
 function DashboardNewsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeNewsTab = parseNewsTab(searchParams.get("tab"));
+  const activeCategorySlug = resolveActiveCategorySlug(
+    searchParams.get("category"),
+    searchParams.get("tab"),
+  );
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -178,6 +190,9 @@ function DashboardNewsPageContent() {
           }
         }
 
+        // 공개 카테고리 (탭 필터용)
+        await loadPublicCategories();
+
         // 비로그인 사용자도 뉴스 목록 조회 가능
         await loadNews();
       } catch (error) {
@@ -191,7 +206,20 @@ function DashboardNewsPageContent() {
     loadData();
   }, []);
 
-  // 카테고리 목록 로드
+  // 공개 카테고리 API (비관리자 탭 필터)
+  const loadPublicCategories = async () => {
+    try {
+      const res = await fetch("/api/news/categories");
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.data) && json.data.length > 0) {
+        setCategories(json.data);
+      }
+    } catch {
+      // 실패 시 레거시 탭 필터 유지
+    }
+  };
+
+  // 카테고리 목록 로드 (관리자)
   const loadCategories = async () => {
     try {
       const { data: categoriesData, error: categoriesError } = await supabase
@@ -643,11 +671,34 @@ function DashboardNewsPageContent() {
     return null;
   };
 
-  // 탭별 표시 뉴스 (관리자는 전체 목록)
-  const displayedNewsList = useMemo(
-    () => (isAdmin ? newsList : filterNewsByTab(newsList, activeNewsTab)),
-    [isAdmin, newsList, activeNewsTab],
-  );
+  // 카테고리·탭별 표시 뉴스 (관리자는 전체 목록)
+  const displayedNewsList = useMemo(() => {
+    if (isAdmin) return newsList;
+
+    const matchedCategory = categories.find((cat) => {
+      const slug = cat.slug ?? categoryNameToSlug(cat.name);
+      return slug === activeCategorySlug;
+    });
+
+    if (matchedCategory) {
+      return newsList.filter((news) =>
+        newsHasCategory(news, matchedCategory.id),
+      );
+    }
+
+    return filterNewsByLegacyTab(
+      newsList,
+      parseLegacyNewsTab(searchParams.get("tab")),
+    );
+  }, [isAdmin, newsList, categories, activeCategorySlug, searchParams]);
+
+  const emptyCategoryLabel = useMemo(() => {
+    const matched = categories.find((cat) => {
+      const slug = cat.slug ?? categoryNameToSlug(cat.name);
+      return slug === activeCategorySlug;
+    });
+    return matched?.name ?? "해당 카테고리";
+  }, [categories, activeCategorySlug]);
 
   // 사이드바 TOP News (최신 5건)
   const topNewsItems = useMemo<RankingNewsItem[]>(
@@ -914,9 +965,7 @@ function DashboardNewsPageContent() {
                 <p className="text-muted-foreground mb-4">
                   {isAdmin
                     ? "게시글이 없음"
-                    : activeNewsTab === "sports"
-                      ? "표시할 Sports News가 없습니다."
-                      : "표시할 Crypto Insights가 없습니다."}
+                    : `표시할 ${emptyCategoryLabel} 뉴스가 없습니다.`}
                 </p>
                 {isAdmin && !showForm && (
                   <Button onClick={() => setShowForm(true)}>

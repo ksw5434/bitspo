@@ -1,0 +1,6 @@
+-- ⚠️ 이 파일은 더 이상 SQL Editor에서 직접 실행하지 마세요.
+-- 스키마 변경은 supabase/migrations/ 에 두고 아래 명령으로 적용합니다:
+--
+--   npm run db:push
+--
+-- 자세한 내용: SUPABASE_MIGRATIONS.md

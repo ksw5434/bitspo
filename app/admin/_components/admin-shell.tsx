@@ -1,0 +1,138 @@
+"use client";
+
+import { Suspense, useMemo } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  BarChart3,
+  Flag,
+  LayoutDashboard,
+  Settings,
+  Shield,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/app/_components/ui/button";
+import { AdminNewsNav } from "./admin-news-nav";
+import { AdminSportsNav } from "./admin-sports-nav";
+
+type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+};
+
+function AdminSidebar() {
+  const pathname = usePathname();
+
+  const adminNavItems: AdminNavItem[] = useMemo(
+    () => [
+      {
+        href: "/admin",
+        label: "대시보드",
+        icon: <LayoutDashboard className="size-4" aria-hidden />,
+      },
+      {
+        href: "/admin/users",
+        label: "회원",
+        icon: <Users className="size-4" aria-hidden />,
+      },
+      {
+        href: "/admin/reports",
+        label: "신고/제재",
+        icon: <Flag className="size-4" aria-hidden />,
+      },
+      {
+        href: "/admin/analytics",
+        label: "통계",
+        icon: <BarChart3 className="size-4" aria-hidden />,
+      },
+      {
+        href: "/admin/settings",
+        label: "설정",
+        icon: <Settings className="size-4" aria-hidden />,
+      },
+    ],
+    [],
+  );
+
+  return (
+    <aside className="hidden md:flex md:w-64 md:flex-col md:border-r md:border-border md:bg-card/40">
+      <div className="flex items-center justify-between gap-3 px-4 py-4">
+        <div className="flex items-center gap-2">
+          <Shield className="size-5 text-primary" aria-hidden />
+          <span className="text-sm font-semibold">관리자</span>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/" aria-label="사이트로 이동">
+            사이트
+          </Link>
+        </Button>
+      </div>
+
+      <nav className="flex flex-col gap-1 px-2 pb-4" aria-label="관리자 메뉴">
+        {adminNavItems.map((item) => {
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/admin" && pathname?.startsWith(item.href));
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                isActive && "bg-accent text-accent-foreground",
+              )}
+            >
+              {item.icon}
+              <span className="truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+
+        <Suspense fallback={null}>
+          <AdminNewsNav />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AdminSportsNav />
+        </Suspense>
+      </nav>
+    </aside>
+  );
+}
+
+function AdminTopbar() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">관리자 대시보드</p>
+          <h1 className="truncate text-base font-semibold">운영 현황</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* TODO: Supabase role 기반 관리자 인증을 붙일 때, 여기에 관리자 정보/로그아웃 UI를 추가 */}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export function AdminShell({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <div className="min-h-[calc(100vh-0px)] bg-background">
+      <div className="flex min-h-screen">
+        <AdminSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AdminTopbar />
+          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}
+

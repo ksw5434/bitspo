@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncNewsSportsCategories } from "@/lib/news-sports-sync";
 
 /**
  * 뉴스 목록 조회 (GET)
@@ -79,7 +80,14 @@ export async function POST(request: NextRequest) {
 
     // 요청 본문 파싱
     const body = await request.json();
-    const { headline, content, image_url, category_ids } = body;
+    const {
+      headline,
+      content,
+      image_url,
+      category_ids,
+      sports_category_ids,
+      publish_to_sports,
+    } = body;
 
     // 필수 필드 검증
     if (!headline || headline.trim() === "") {
@@ -90,22 +98,42 @@ export async function POST(request: NextRequest) {
     }
 
     // 뉴스 생성
-    const { data: news, error } = await supabase
+    const insertPayload: Record<string, unknown> = {
+      headline: headline.trim(),
+      content: content?.trim() || null,
+      image_url: image_url?.trim() || null,
+      author_id: user.id,
+    };
+
+    if (publish_to_sports === true) {
+      insertPayload.is_pick = true;
+    }
+
+    let { data: news, error } = await supabase
       .from("news")
-      .insert({
-        headline: headline.trim(),
-        content: content?.trim() || null,
-        image_url: image_url?.trim() || null,
-        author_id: user.id,
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    // is_pick 컬럼 미적용 시 마이그레이션 전까지 name만으로 재시도
+    if (error?.message?.includes("is_pick")) {
+      delete insertPayload.is_pick;
+      ({ data: news, error } = await supabase
+        .from("news")
+        .insert(insertPayload)
+        .select()
+        .single());
+    }
 
     if (error) {
       console.error("뉴스 생성 오류:", error);
       return NextResponse.json(
-        { error: "뉴스 생성에 실패했습니다." },
-        { status: 500 }
+        {
+          error: error.message?.includes("is_pick")
+            ? "news.is_pick 컬럼이 없습니다. npm run db:push 를 실행해 주세요."
+            : "뉴스 생성에 실패했습니다.",
+        },
+        { status: 500 },
       );
     }
 
@@ -138,6 +166,8 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    await syncNewsSportsCategories(supabase, news.id, sports_category_ids);
 
     return NextResponse.json({ data: news }, { status: 201 });
   } catch (error) {

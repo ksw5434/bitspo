@@ -1,0 +1,2 @@
+-- 로컬 `supabase db reset` 시에만 실행됩니다.
+-- 원격 DB에는 `supabase db push`로 migrations만 적용하세요.

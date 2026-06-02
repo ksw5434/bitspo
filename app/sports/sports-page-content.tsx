@@ -18,40 +18,68 @@ import {
   type NewsWithCategories,
 } from "@/lib/news-filters";
 import {
-  parseSportsTab,
-  SPORTS_TAB_LABELS,
-  type SportsTab,
+  newsHasSportsCategory,
+  type SportsCategoryRecord,
+} from "@/lib/sports-categories";
+import {
+  FALLBACK_SPORTS_CATEGORIES,
+  resolveActiveSportsCategorySlug,
 } from "@/lib/sports-tabs";
 
-/** 리그 탭별 뉴스 필터 (키워드 매칭 없으면 전체 스포츠 뉴스 표시) */
-function filterNewsBySportsTab(
+/** 카테고리 slug 기준 필터 */
+function filterNewsBySportsCategory(
   sportsNewsList: NewsWithCategories[],
-  tab: SportsTab,
+  categorySlug: string,
+  categories: Pick<SportsCategoryRecord, "id" | "slug" | "name">[],
 ): NewsWithCategories[] {
-  const leagueKeyword = SPORTS_TAB_LABELS[tab].toLowerCase();
+  const matchedCategory = categories.find((cat) => cat.slug === categorySlug);
+  if (!matchedCategory) {
+    return sportsNewsList;
+  }
 
-  const matchedNews = sportsNewsList.filter((news) => {
-    const headline = news.headline.toLowerCase();
-    const categoryText = (news.news_categories ?? [])
-      .map((item) => item.categories?.name?.toLowerCase() ?? "")
-      .join(" ");
+  const filtered = sportsNewsList.filter((news) =>
+    newsHasSportsCategory(news, matchedCategory.id),
+  );
 
-    return (
-      headline.includes(leagueKeyword) || categoryText.includes(leagueKeyword)
-    );
-  });
-
-  return matchedNews.length > 0 ? matchedNews : sportsNewsList;
+  return filtered.length > 0 ? filtered : sportsNewsList;
 }
 
 export function SportsPageContent() {
   const searchParams = useSearchParams();
-  const activeSportsTab = parseSportsTab(searchParams.get("tab"));
 
   const [newsList, setNewsList] = useState<NewsWithCategories[]>([]);
+  const [sportsCategories, setSportsCategories] = useState<
+    Pick<SportsCategoryRecord, "id" | "name" | "slug">[]
+  >(FALLBACK_SPORTS_CATEGORIES);
   const [isLoading, setIsLoading] = useState(true);
 
+  const activeCategorySlug = resolveActiveSportsCategorySlug(
+    searchParams.get("category"),
+    searchParams.get("tab"),
+    sportsCategories,
+  );
+
+  const activeCategoryName =
+    sportsCategories.find((cat) => cat.slug === activeCategorySlug)?.name ??
+    "Sports";
+
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    const loadSportsCategories = async () => {
+      try {
+        const res = await fetch("/api/sports/categories");
+        const json = await res.json();
+        if (res.ok && Array.isArray(json.data) && json.data.length > 0) {
+          setSportsCategories(json.data);
+        }
+      } catch {
+        // 기본 탭 유지
+      }
+    };
+
+    void loadSportsCategories();
+  }, []);
 
   useEffect(() => {
     const loadSportsNews = async () => {
@@ -63,10 +91,11 @@ export function SportsPageContent() {
             *,
             news_categories (
               category_id,
-              categories (
-                id,
-                name
-              )
+              categories ( id, name )
+            ),
+            news_sports_categories (
+              sports_category_id,
+              sports_categories ( id, name, slug )
             )
           `,
           )
@@ -123,8 +152,13 @@ export function SportsPageContent() {
   );
 
   const displayedNewsList = useMemo(
-    () => filterNewsBySportsTab(sportsNewsList, activeSportsTab),
-    [sportsNewsList, activeSportsTab],
+    () =>
+      filterNewsBySportsCategory(
+        sportsNewsList,
+        activeCategorySlug,
+        sportsCategories,
+      ),
+    [sportsNewsList, activeCategorySlug, sportsCategories],
   );
 
   const topNewsItems = useMemo<RankingNewsItem[]>(
@@ -154,14 +188,13 @@ export function SportsPageContent() {
 
   return (
     <main className="container mx-auto w-full max-w-7xl px-4 py-8 space-y-10">
-      {/* 7:3 레이아웃 — 왼쪽 뉴스 기사, 오른쪽 TOP News + Trending Coins */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-10">
         <section className="space-y-10 lg:col-span-7">
           {displayedNewsList.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  표시할 {SPORTS_TAB_LABELS[activeSportsTab]} 뉴스가 없습니다.
+                  표시할 {activeCategoryName} 뉴스가 없습니다.
                 </p>
               </CardContent>
             </Card>
@@ -175,7 +208,6 @@ export function SportsPageContent() {
         </aside>
       </div>
 
-      {/* Scores — 컨테이너 전체 너비 */}
       <ScoresSection className="w-full" />
     </main>
   );

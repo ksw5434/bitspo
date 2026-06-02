@@ -1,0 +1,5 @@
+-- ⚠️ 이 파일은 더 이상 SQL Editor에서 직접 실행하지 마세요.
+-- 스키마 변경은 supabase/migrations/20250602100000_news_categories_slug.sql 을
+-- `npm run db:push` 로 적용하세요.
+--
+-- 자세한 내용: SUPABASE_MIGRATIONS.md
