@@ -9,7 +9,6 @@ import { MessageSquare, ThumbsUp, Eye, Clock } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 import {
   COMMUNITY_TAB_DESCRIPTIONS,
-  COMMUNITY_TAB_LABELS,
   filterPostsByCommunityTab,
   parseCommunityTab,
 } from "@/lib/community-tabs";
@@ -451,13 +450,13 @@ export default function CommunityPage() {
   /** 메인 영역 — 서브 탭별 콘텐츠 */
   const renderMainContent = () => {
     const isGuestbookTab = communitySectionTab === "guestbook";
-    const activeTabLabel = COMMUNITY_TAB_LABELS[communitySectionTab];
+    const tabDescription = COMMUNITY_TAB_DESCRIPTIONS[communitySectionTab];
 
     return (
       <div className="rounded-lg bg-card px-4 py-2">
-        <p className="mb-4 text-sm text-muted-foreground">
-          {COMMUNITY_TAB_DESCRIPTIONS[communitySectionTab]}
-        </p>
+        {tabDescription ? (
+          <p className="mb-4 text-sm text-muted-foreground">{tabDescription}</p>
+        ) : null}
 
         {isAuthenticated && isGuestbookTab && (
           <div className="mb-4 flex justify-end">
@@ -465,12 +464,6 @@ export default function CommunityPage() {
               <Link href="/community/write?tab=guestbook">방명록 작성</Link>
             </Button>
           </div>
-        )}
-
-        {!isGuestbookTab && (
-          <p className="mb-4 text-xs text-muted-foreground/80">
-            {activeTabLabel} 글은 운영진이 작성합니다. 댓글로 참여해 주세요.
-          </p>
         )}
 
         {isInitialLoading ? (

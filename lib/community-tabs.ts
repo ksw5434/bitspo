@@ -18,11 +18,10 @@ export const COMMUNITY_TABS: CommunityTab[] = [
 /** 방명록 게시글 구분용 카테고리 값 (DB 저장) */
 export const GUESTBOOK_CATEGORY = "Guestbook";
 
-/** 탭별 안내 문구 (목업) */
+/** 탭별 안내 문구 (비어 있으면 UI에 표시하지 않음) */
 export const COMMUNITY_TAB_DESCRIPTIONS: Record<CommunityTab, string> = {
-  forum: "운영진이 작성한 공지·포럼 글입니다. 회원은 댓글로 참여할 수 있습니다.",
-  discussion:
-    "운영진이 작성한 토론 글입니다. 회원은 댓글로 의견을 나눌 수 있습니다.",
+  forum: "",
+  discussion: "",
   guestbook: "짧은 메시지를 남기는 방명록 공간입니다. (텍스트만 작성 가능)",
 };
 

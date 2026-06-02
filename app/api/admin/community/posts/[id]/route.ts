@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteCommunityPostById } from "@/lib/admin/delete-community-post";
 import { requireAdminApi } from "@/lib/admin/require-admin";
 import { isCommunitySection } from "@/lib/community-sections";
 
@@ -101,11 +102,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
 
-  const { error } = await auth.supabase.from("communities").delete().eq("id", id);
+  const result = await deleteCommunityPostById(auth.supabase, id);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, id: result.deletedId });
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteCommunityPostsByIds } from "@/lib/admin/delete-community-post";
 import { requireAdminApi } from "@/lib/admin/require-admin";
 import {
   DISCUSSION_TOPIC_CATEGORIES,
@@ -6,6 +7,61 @@ import {
   resolvePostSection,
   type CommunitySection,
 } from "@/lib/community-sections";
+
+const ADMIN_POSTS_PAGE_SIZE = 20;
+const ADMIN_POSTS_MAX_PAGE_SIZE = 100;
+
+const LIST_SELECT = `
+  id,
+  title,
+  content,
+  category,
+  section,
+  tags,
+  image_url,
+  user_id,
+  views,
+  like_count,
+  comment_count,
+  created_at,
+  updated_at
+`;
+
+const LIST_SELECT_WITHOUT_SECTION = `
+  id,
+  title,
+  content,
+  category,
+  tags,
+  image_url,
+  user_id,
+  views,
+  like_count,
+  comment_count,
+  created_at,
+  updated_at
+`;
+
+function parsePaginationParams(searchParams: URLSearchParams) {
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const requestedLimit = Number.parseInt(
+    searchParams.get("limit") ?? String(ADMIN_POSTS_PAGE_SIZE),
+    10,
+  );
+  const limit = Math.min(
+    ADMIN_POSTS_MAX_PAGE_SIZE,
+    Math.max(1, requestedLimit || ADMIN_POSTS_PAGE_SIZE),
+  );
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  return { page, limit, from, to };
+}
+
+function buildPaginationMeta(page: number, limit: number, total: number) {
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+  return { page, limit, total, totalPages };
+}
 
 /** 관리자 — 섹션별 게시글 목록·작성 */
 export async function GET(request: NextRequest) {
@@ -20,48 +76,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await auth.supabase
+  const { page, limit, from, to } = parsePaginationParams(request.nextUrl.searchParams);
+
+  const { data, error, count } = await auth.supabase
     .from("communities")
-    .select(
-      `
-      id,
-      title,
-      content,
-      category,
-      section,
-      tags,
-      image_url,
-      user_id,
-      views,
-      like_count,
-      comment_count,
-      created_at,
-      updated_at
-    `,
-    )
+    .select(LIST_SELECT, { count: "exact" })
     .eq("section", sectionParam)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (error) {
     if (error.message?.includes("section")) {
       const { data: fallbackRows, error: fallbackError } = await auth.supabase
         .from("communities")
-        .select(
-          `
-          id,
-          title,
-          content,
-          category,
-          tags,
-          image_url,
-          user_id,
-          views,
-          like_count,
-          comment_count,
-          created_at,
-          updated_at
-        `,
-        )
+        .select(LIST_SELECT_WITHOUT_SECTION)
         .order("created_at", { ascending: false });
 
       if (fallbackError) {
@@ -71,12 +99,57 @@ export async function GET(request: NextRequest) {
       const filtered = (fallbackRows ?? []).filter(
         (row) => resolvePostSection(row) === sectionParam,
       );
-      return NextResponse.json({ data: filtered });
+      const total = filtered.length;
+      const pageRows = filtered.slice(from, from + limit);
+
+      return NextResponse.json({
+        data: pageRows,
+        pagination: buildPaginationMeta(page, limit, total),
+      });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data: data ?? [] });
+  const total = count ?? 0;
+
+  return NextResponse.json({
+    data: data ?? [],
+    pagination: buildPaginationMeta(page, limit, total),
+  });
+}
+
+/** 관리자 — 선택한 게시글 일괄 삭제 */
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "요청 본문이 올바르지 않습니다." }, { status: 400 });
+  }
+
+  const { ids } = body as { ids?: string[] };
+
+  if (!Array.isArray(ids)) {
+    return NextResponse.json(
+      { error: "삭제할 게시글 id 배열(ids)이 필요합니다." },
+      { status: 400 },
+    );
+  }
+
+  const result = await deleteCommunityPostsByIds(auth.supabase, ids);
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+
+  return NextResponse.json({
+    success: true,
+    deletedIds: result.deletedIds,
+    deletedCount: result.deletedIds.length,
+  });
 }
 
 export async function POST(request: NextRequest) {

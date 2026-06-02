@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteCommunityPostById } from "@/lib/admin/delete-community-post";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -209,21 +210,17 @@ export async function DELETE(
       );
     }
 
-    // 커뮤니티 삭제
-    const { error } = await supabase
-      .from("communities")
-      .delete()
-      .eq("id", communityId);
+    const deleteResult = await deleteCommunityPostById(supabase, communityId);
 
-    if (error) {
-      console.error("커뮤니티 삭제 오류:", error);
+    if (!deleteResult.ok) {
+      console.error("커뮤니티 삭제 오류:", deleteResult.error);
       return NextResponse.json(
-        { error: "커뮤니티 게시글 삭제에 실패했습니다." },
-        { status: 500 }
+        { error: deleteResult.error },
+        { status: deleteResult.status },
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: deleteResult.deletedId });
   } catch (error) {
     console.error("커뮤니티 삭제 중 예외 발생:", error);
     return NextResponse.json(
