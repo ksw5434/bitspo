@@ -38,6 +38,7 @@ export default function Header() {
     name?: string;
     avatar_url?: string;
   } | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -74,14 +75,20 @@ export default function Header() {
       try {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("name, avatar_url")
+          .select("name, avatar_url, is_admin")
           .eq("id", userId)
           .single();
 
-        setUserProfile(profile ?? null);
+        setUserProfile(
+          profile
+            ? { name: profile.name, avatar_url: profile.avatar_url }
+            : null,
+        );
+        setIsAdmin(profile?.is_admin === true);
       } catch (error) {
         console.error("프로필 조회 오류:", error);
         setUserProfile(null);
+        setIsAdmin(false);
       }
     };
 
@@ -97,11 +104,13 @@ export default function Header() {
         } else {
           setUser(null);
           setUserProfile(null);
+          setIsAdmin(false);
         }
       } catch (error) {
         console.error("사용자 확인 오류:", error);
         setUser(null);
         setUserProfile(null);
+        setIsAdmin(false);
       } finally {
         hasInitialized = true;
         setIsLoading(false);
@@ -119,6 +128,7 @@ export default function Header() {
       } else {
         setUser(null);
         setUserProfile(null);
+        setIsAdmin(false);
       }
     });
 
@@ -142,6 +152,7 @@ export default function Header() {
 
       setUser(null);
       setUserProfile(null);
+      setIsAdmin(false);
       router.push("/");
       router.refresh();
     } catch (error) {
@@ -217,6 +228,7 @@ export default function Header() {
                   mounted={mounted}
                   user={user}
                   userProfile={userProfile}
+                  isAdmin={isAdmin}
                   isLoading={isLoading}
                   isDropdownOpen={isDropdownOpen}
                   onDropdownOpenChange={setIsDropdownOpen}

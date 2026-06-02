@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { syncNewsBetCategories } from "@/lib/news-bet-sync";
+import { syncNewsCryptoCategories } from "@/lib/news-crypto-sync";
 import { syncNewsSportsCategories } from "@/lib/news-sports-sync";
 
 /**
@@ -87,6 +89,10 @@ export async function POST(request: NextRequest) {
       category_ids,
       sports_category_ids,
       publish_to_sports,
+      crypto_category_ids,
+      publish_to_crypto,
+      bet_category_ids,
+      publish_to_bet,
     } = body;
 
     // 필수 필드 검증
@@ -109,15 +115,41 @@ export async function POST(request: NextRequest) {
       insertPayload.is_pick = true;
     }
 
+    if (publish_to_crypto === true) {
+      insertPayload.publish_to_crypto = true;
+    }
+
+    if (publish_to_bet === true) {
+      insertPayload.publish_to_bet = true;
+    }
+
     let { data: news, error } = await supabase
       .from("news")
       .insert(insertPayload)
       .select()
       .single();
 
-    // is_pick 컬럼 미적용 시 마이그레이션 전까지 name만으로 재시도
+    // is_pick / publish_to_crypto 컬럼 미적용 시 단계적 재시도
     if (error?.message?.includes("is_pick")) {
       delete insertPayload.is_pick;
+      ({ data: news, error } = await supabase
+        .from("news")
+        .insert(insertPayload)
+        .select()
+        .single());
+    }
+
+    if (error?.message?.includes("publish_to_crypto")) {
+      delete insertPayload.publish_to_crypto;
+      ({ data: news, error } = await supabase
+        .from("news")
+        .insert(insertPayload)
+        .select()
+        .single());
+    }
+
+    if (error?.message?.includes("publish_to_bet")) {
+      delete insertPayload.publish_to_bet;
       ({ data: news, error } = await supabase
         .from("news")
         .insert(insertPayload)
@@ -131,7 +163,11 @@ export async function POST(request: NextRequest) {
         {
           error: error.message?.includes("is_pick")
             ? "news.is_pick 컬럼이 없습니다. npm run db:push 를 실행해 주세요."
-            : "뉴스 생성에 실패했습니다.",
+            : error.message?.includes("publish_to_crypto")
+              ? "news.publish_to_crypto 컬럼이 없습니다. npm run db:push 를 실행해 주세요."
+              : error.message?.includes("publish_to_bet")
+                ? "news.publish_to_bet 컬럼이 없습니다. npm run db:push 를 실행해 주세요."
+                : "뉴스 생성에 실패했습니다.",
         },
         { status: 500 },
       );
@@ -168,6 +204,8 @@ export async function POST(request: NextRequest) {
     }
 
     await syncNewsSportsCategories(supabase, news.id, sports_category_ids);
+    await syncNewsCryptoCategories(supabase, news.id, crypto_category_ids);
+    await syncNewsBetCategories(supabase, news.id, bet_category_ids);
 
     return NextResponse.json({ data: news }, { status: 201 });
   } catch (error) {

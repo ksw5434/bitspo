@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BET_TAB_LABELS,
-  BET_TABS,
-  parseBetTab,
-  type BetTab,
+  FALLBACK_BET_CATEGORIES,
+  resolveActiveBetCategorySlug,
 } from "@/lib/bet-tabs";
+import type { BetCategoryRecord } from "@/lib/bet-categories";
 import { MAIN_NAV_ITEMS } from "@/lib/navigation";
 
-/** 메인 네비 Bet 메뉴 라벨 */
 const BET_SECTION_LABEL =
   MAIN_NAV_ITEMS.find((item) => item.path === "/bet")?.label ?? "Bet";
 
 /**
- * /bet 페이지 전용 서브 탭 (헤더 하단, 스크롤 시 상단 고정)
- * Bet | Betting Sites | How to Bet — 컨테이너 내 왼쪽 정렬
+ * /bet 페이지 서브 탭 — bet_categories DB 기준 (동적)
+ * 레거시 ?tab=how-to-bet 도 호환
  */
 export function HeaderBetTabs() {
   const tabsBarRef = useRef<HTMLDivElement>(null);
@@ -24,9 +22,39 @@ export function HeaderBetTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [categories, setCategories] = useState<
+    Pick<BetCategoryRecord, "id" | "name" | "slug">[]
+  >(FALLBACK_BET_CATEGORIES);
+
   const isBetPage = pathname === "/bet";
 
-  // sticky 탭 바 높이 — 하위 sticky 요소 offset에 사용
+  const activeSlug = resolveActiveBetCategorySlug(
+    searchParams.get("category"),
+    searchParams.get("tab"),
+    categories,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/bet/categories");
+        const json = await res.json();
+        if (!cancelled && res.ok && Array.isArray(json.data) && json.data.length > 0) {
+          setCategories(json.data);
+        }
+      } catch {
+        // FALLBACK 유지
+      }
+    }
+
+    void loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const tabsBarElement = tabsBarRef.current;
     if (!isBetPage || !tabsBarElement) {
@@ -50,24 +78,22 @@ export function HeaderBetTabs() {
       resizeObserver.disconnect();
       document.documentElement.style.removeProperty("--bet-tabs-height");
     };
-  }, [isBetPage]);
+  }, [isBetPage, categories.length]);
 
   if (!isBetPage) {
     return null;
   }
 
-  const activeBetTab = parseBetTab(searchParams.get("tab"));
-
-  const handleTabChange = (tab: BetTab) => {
-    if (tab === activeBetTab) {
-      return;
-    }
+  const handleCategoryChange = (slug: string) => {
+    if (slug === activeSlug) return;
 
     const nextParams = new URLSearchParams(searchParams.toString());
-    if (tab === "betting-sites") {
-      nextParams.delete("tab");
+    nextParams.delete("tab");
+
+    if (slug === "betting-sites") {
+      nextParams.delete("category");
     } else {
-      nextParams.set("tab", tab);
+      nextParams.set("category", slug);
     }
 
     const queryString = nextParams.toString();
@@ -87,7 +113,6 @@ export function HeaderBetTabs() {
           role="tablist"
           aria-label="Bet 카테고리"
         >
-          {/* 메인 Bet 메뉴 표시 */}
           <span className="inline-flex items-center gap-2">
             <span className="font-semibold text-red-500 dark:text-red-400 whitespace-nowrap">
               {BET_SECTION_LABEL}
@@ -100,31 +125,35 @@ export function HeaderBetTabs() {
             </span>
           </span>
 
-          {BET_TABS.map((tab, tabIndex) => (
-            <span key={tab} className="inline-flex items-center gap-2">
-              {tabIndex > 0 && (
-                <span
-                  className="text-muted-foreground/40 select-none"
-                  aria-hidden
+          {categories.map((category, index) => {
+            const isActive = activeSlug === category.slug;
+
+            return (
+              <span key={category.id} className="inline-flex items-center gap-2">
+                {index > 0 && (
+                  <span
+                    className="text-muted-foreground/40 select-none"
+                    aria-hidden
+                  >
+                    |
+                  </span>
+                )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleCategoryChange(category.slug)}
+                  className={`whitespace-nowrap transition-colors cursor-pointer ${
+                    isActive
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  |
-                </span>
-              )}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeBetTab === tab}
-                onClick={() => handleTabChange(tab)}
-                className={`whitespace-nowrap transition-colors cursor-pointer ${
-                  activeBetTab === tab
-                    ? "font-semibold text-foreground"
-                    : "font-medium text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {BET_TAB_LABELS[tab]}
-              </button>
-            </span>
-          ))}
+                  {category.name}
+                </button>
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>

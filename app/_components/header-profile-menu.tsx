@@ -6,6 +6,7 @@ import {
   LogOut,
   LayoutDashboard,
   Newspaper,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -22,6 +23,8 @@ interface HeaderProfileMenuProps {
   mounted: boolean;
   user: User | null;
   userProfile: { name?: string; avatar_url?: string } | null;
+  /** profiles.is_admin === true 일 때만 관리자 메뉴 표시 */
+  isAdmin: boolean;
   isLoading: boolean;
   isDropdownOpen: boolean;
   onDropdownOpenChange: (open: boolean) => void;
@@ -36,6 +39,7 @@ export function HeaderProfileMenu({
   mounted,
   user,
   userProfile,
+  isAdmin,
   isLoading,
   isDropdownOpen,
   onDropdownOpenChange,
@@ -106,6 +110,17 @@ export function HeaderProfileMenu({
                 대시보드
               </Link>
             </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <Shield className="w-4 h-4" />
+                  관리자 대시보드
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link
                 href="/dashboard/profile"

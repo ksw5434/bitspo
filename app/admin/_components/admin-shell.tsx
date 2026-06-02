@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
   Flag,
   LayoutDashboard,
   Settings,
@@ -14,7 +17,13 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/app/_components/ui/button";
 import { AdminNewsNav } from "./admin-news-nav";
+import { AdminBetNav } from "./admin-bet-nav";
+import { AdminCryptoNav } from "./admin-crypto-nav";
 import { AdminSportsNav } from "./admin-sports-nav";
+import {
+  AdminSidebarProvider,
+  useAdminSidebar,
+} from "./admin-sidebar-context";
 
 type AdminNavItem = {
   href: string;
@@ -24,6 +33,7 @@ type AdminNavItem = {
 
 function AdminSidebar() {
   const pathname = usePathname();
+  const { isCollapsed, toggleCollapsed } = useAdminSidebar();
 
   const adminNavItems: AdminNavItem[] = useMemo(
     () => [
@@ -57,20 +67,57 @@ function AdminSidebar() {
   );
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col md:border-r md:border-border md:bg-card/40">
-      <div className="flex items-center justify-between gap-3 px-4 py-4">
-        <div className="flex items-center gap-2">
-          <Shield className="size-5 text-primary" aria-hidden />
-          <span className="text-sm font-semibold">관리자</span>
+    <aside
+      className={cn(
+        "hidden md:flex md:flex-col md:border-r md:border-border md:bg-card/40 transition-[width] duration-200 ease-in-out",
+        isCollapsed ? "md:w-[4.25rem]" : "md:w-64",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 px-3 py-4",
+          isCollapsed ? "flex-col" : "justify-between",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2 min-w-0",
+            isCollapsed && "justify-center",
+          )}
+          title={isCollapsed ? "관리자" : undefined}
+        >
+          <Shield className="size-5 shrink-0 text-primary" aria-hidden />
+          {!isCollapsed && (
+            <span className="text-sm font-semibold truncate">관리자</span>
+          )}
         </div>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/" aria-label="사이트로 이동">
-            사이트
-          </Link>
-        </Button>
+
+        {!isCollapsed && (
+          <Button asChild size="sm" variant="outline" className="shrink-0">
+            <Link href="/" aria-label="사이트로 이동">
+              사이트
+            </Link>
+          </Button>
+        )}
+
+        {isCollapsed && (
+          <Button
+            asChild
+            size="icon"
+            variant="ghost"
+            className="size-8 shrink-0"
+          >
+            <Link href="/" title="사이트로 이동" aria-label="사이트로 이동">
+              <ExternalLink className="size-4" aria-hidden />
+            </Link>
+          </Button>
+        )}
       </div>
 
-      <nav className="flex flex-col gap-1 px-2 pb-4" aria-label="관리자 메뉴">
+      <nav
+        className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 pb-2"
+        aria-label="관리자 메뉴"
+      >
         {adminNavItems.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -80,13 +127,18 @@ function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              title={isCollapsed ? item.label : undefined}
+              aria-label={isCollapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                "flex items-center gap-2 rounded-md py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                isCollapsed ? "justify-center px-2" : "px-3",
                 isActive && "bg-accent text-accent-foreground",
               )}
             >
               {item.icon}
-              <span className="truncate">{item.label}</span>
+              {!isCollapsed && (
+                <span className="truncate">{item.label}</span>
+              )}
             </Link>
           );
         })}
@@ -97,7 +149,34 @@ function AdminSidebar() {
         <Suspense fallback={null}>
           <AdminSportsNav />
         </Suspense>
+        <Suspense fallback={null}>
+          <AdminCryptoNav />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AdminBetNav />
+        </Suspense>
       </nav>
+
+      <div className="border-t border-border p-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size={isCollapsed ? "icon" : "sm"}
+          className={cn("w-full", isCollapsed && "size-9")}
+          onClick={toggleCollapsed}
+          aria-label={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          title={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="size-4" aria-hidden />
+          ) : (
+            <>
+              <ChevronLeft className="size-4 shrink-0" aria-hidden />
+              <span className="truncate">메뉴 접기</span>
+            </>
+          )}
+        </Button>
+      </div>
     </aside>
   );
 }
@@ -124,15 +203,16 @@ export function AdminShell({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-[calc(100vh-0px)] bg-background">
-      <div className="flex min-h-screen">
-        <AdminSidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <AdminTopbar />
-          <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+    <AdminSidebarProvider>
+      <div className="min-h-[calc(100vh-0px)] bg-background">
+        <div className="flex min-h-screen">
+          <AdminSidebar />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <AdminTopbar />
+            <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+          </div>
         </div>
       </div>
-    </div>
+    </AdminSidebarProvider>
   );
 }
-

@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type CategoryTableName = "categories" | "sports_categories";
+export type CategoryTableName =
+  | "categories"
+  | "sports_categories"
+  | "crypto_categories"
+  | "bet_categories";
 
 /** 카테고리 ID 배열 순서대로 sort_order 저장 */
 export async function reorderCategoryTable(

@@ -3,33 +3,33 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ChevronDown, Trophy, Tag } from "lucide-react";
+import { ChevronDown, Dice5, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SportsCategoryRecord } from "@/lib/sports-categories";
+import type { BetCategoryRecord } from "@/lib/bet-categories";
 import { useAdminSidebar } from "./admin-sidebar-context";
 
-/** 사이드바 Sports 글쓰기 + 동적 카테고리 하위 링크 */
-export function AdminSportsNav() {
+/** 사이드바 Bet 글쓰기 + 동적 카테고리 하위 링크 */
+export function AdminBetNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeCategorySlug = searchParams.get("category");
   const { isCollapsed } = useAdminSidebar();
 
-  const [categories, setCategories] = useState<SportsCategoryRecord[]>([]);
+  const [categories, setCategories] = useState<BetCategoryRecord[]>([]);
   const [expanded, setExpanded] = useState(true);
 
-  const isSportsSection = pathname?.startsWith("/admin/sports") ?? false;
+  const isBetSection = pathname?.startsWith("/admin/bet") ?? false;
 
   useEffect(() => {
-    if (isSportsSection && !isCollapsed) setExpanded(true);
-  }, [isSportsSection, isCollapsed]);
+    if (isBetSection && !isCollapsed) setExpanded(true);
+  }, [isBetSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const res = await fetch("/api/admin/sports/categories");
+        const res = await fetch("/api/admin/bet/categories");
         const json = await res.json();
         if (!cancelled && res.ok) {
           setCategories(json.data ?? []);
@@ -45,22 +45,22 @@ export function AdminSportsNav() {
     };
   }, []);
 
-  const isParentActive = isSportsSection;
-  const isAllActive = pathname === "/admin/sports" && !activeCategorySlug;
-  const isCategoriesPage = pathname === "/admin/sports/categories";
+  const isParentActive = isBetSection;
+  const isAllActive = pathname === "/admin/bet" && !activeCategorySlug;
+  const isCategoriesPage = pathname === "/admin/bet/categories";
 
   if (isCollapsed) {
     return (
       <Link
-        href="/admin/sports"
-        title="Sports 글쓰기"
-        aria-label="Sports 글쓰기"
+        href="/admin/bet"
+        title="Bet 글쓰기"
+        aria-label="Bet 글쓰기"
         className={cn(
           "flex items-center justify-center rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
           isParentActive && "bg-accent text-accent-foreground",
         )}
       >
-        <Trophy className="size-4 shrink-0" aria-hidden />
+        <Dice5 className="size-4 shrink-0" aria-hidden />
       </Link>
     );
   }
@@ -76,8 +76,8 @@ export function AdminSportsNav() {
         )}
         aria-expanded={expanded}
       >
-        <Trophy className="size-4 shrink-0" aria-hidden />
-        <span className="flex-1 truncate text-left">Sports 글쓰기</span>
+        <Dice5 className="size-4 shrink-0" aria-hidden />
+        <span className="flex-1 truncate text-left">Bet 글쓰기</span>
         <ChevronDown
           className={cn(
             "size-4 shrink-0 transition-transform",
@@ -90,7 +90,7 @@ export function AdminSportsNav() {
       {expanded && (
         <div className="ml-3 flex flex-col gap-0.5 border-l border-border pl-2">
           <Link
-            href="/admin/sports"
+            href="/admin/bet"
             className={cn(
               "rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               isAllActive && "bg-accent/80 text-accent-foreground font-medium",
@@ -101,13 +101,13 @@ export function AdminSportsNav() {
 
           {categories.map((category) => {
             const isActive =
-              pathname === "/admin/sports" &&
+              pathname === "/admin/bet" &&
               activeCategorySlug === category.slug;
 
             return (
               <Link
                 key={category.id}
-                href={`/admin/sports?category=${encodeURIComponent(category.slug)}`}
+                href={`/admin/bet?category=${encodeURIComponent(category.slug)}`}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground truncate",
                   isActive && "bg-accent/80 text-accent-foreground font-medium",
@@ -119,10 +119,10 @@ export function AdminSportsNav() {
           })}
 
           <Link
-            href="/admin/sports/new"
+            href="/admin/bet/new"
             className={cn(
               "rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              pathname === "/admin/sports/new" &&
+              pathname === "/admin/bet/new" &&
                 "bg-accent/80 text-accent-foreground font-medium",
             )}
           >
@@ -130,7 +130,7 @@ export function AdminSportsNav() {
           </Link>
 
           <Link
-            href="/admin/sports/categories"
+            href="/admin/bet/categories"
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               isCategoriesPage &&

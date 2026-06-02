@@ -6,6 +6,8 @@ export type NewsWithCategories = {
   image_url: string | null;
   author_id: string | null;
   is_pick?: boolean | null;
+  publish_to_crypto?: boolean | null;
+  publish_to_bet?: boolean | null;
   created_at: string;
   updated_at: string;
   news_categories?: Array<{
@@ -18,6 +20,22 @@ export type NewsWithCategories = {
   news_sports_categories?: Array<{
     sports_category_id: string;
     sports_categories: {
+      id: string;
+      name: string;
+      slug?: string | null;
+    } | null;
+  }>;
+  news_crypto_categories?: Array<{
+    crypto_category_id: string;
+    crypto_categories: {
+      id: string;
+      name: string;
+      slug?: string | null;
+    } | null;
+  }>;
+  news_bet_categories?: Array<{
+    bet_category_id: string;
+    bet_categories: {
       id: string;
       name: string;
       slug?: string | null;
@@ -48,6 +66,32 @@ export function isSportsNewsItem(news: NewsWithCategories): boolean {
   }
 
   return getNewsCategoryNames(news).some((name) => name.includes("sport"));
+}
+
+/** Crypto News 여부 (publish_to_crypto 또는 crypto 카테고리) */
+export function isCryptoNewsItem(news: NewsWithCategories): boolean {
+  if (news.publish_to_crypto === true) {
+    return true;
+  }
+
+  if ((news.news_crypto_categories ?? []).length > 0) {
+    return true;
+  }
+
+  return getNewsCategoryNames(news).some((name) => name.includes("crypto"));
+}
+
+/** Bet News 여부 (publish_to_bet 또는 bet 카테고리) */
+export function isBetNewsItem(news: NewsWithCategories): boolean {
+  if (news.publish_to_bet === true) {
+    return true;
+  }
+
+  if ((news.news_bet_categories ?? []).length > 0) {
+    return true;
+  }
+
+  return getNewsCategoryNames(news).some((name) => name.includes("bet"));
 }
 
 /** 본문에서 첫 번째 이미지 URL 추출 */

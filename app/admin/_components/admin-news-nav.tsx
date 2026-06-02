@@ -6,12 +6,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, FileText, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NewsCategoryRecord } from "@/lib/news-categories";
+import { useAdminSidebar } from "./admin-sidebar-context";
 
 /** 사이드바 News 메뉴 + 동적 카테고리 하위 링크 */
 export function AdminNewsNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeCategorySlug = searchParams.get("category");
+  const { isCollapsed } = useAdminSidebar();
 
   const [categories, setCategories] = useState<NewsCategoryRecord[]>([]);
   const [expanded, setExpanded] = useState(true);
@@ -19,8 +21,8 @@ export function AdminNewsNav() {
   const isNewsSection = pathname?.startsWith("/admin/news") ?? false;
 
   useEffect(() => {
-    if (isNewsSection) setExpanded(true);
-  }, [isNewsSection]);
+    if (isNewsSection && !isCollapsed) setExpanded(true);
+  }, [isNewsSection, isCollapsed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +49,22 @@ export function AdminNewsNav() {
   const isAllActive =
     pathname === "/admin/news" && !activeCategorySlug;
   const isCategoriesPage = pathname === "/admin/news/categories";
+
+  if (isCollapsed) {
+    return (
+      <Link
+        href="/admin/news"
+        title="News 글쓰기"
+        aria-label="News 글쓰기"
+        className={cn(
+          "flex items-center justify-center rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+          isParentActive && "bg-accent text-accent-foreground",
+        )}
+      >
+        <FileText className="size-4 shrink-0" aria-hidden />
+      </Link>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-0.5">
