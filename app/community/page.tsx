@@ -29,6 +29,7 @@ type Post = {
   comments: number;
   tags: string[];
   category?: string;
+  section?: string;
   image?: string; // image_url을 image로 매핑
 };
 
@@ -153,6 +154,7 @@ export default function CommunityPage() {
               comments: item.comment_count || 0,
               tags: item.tags || [],
               category: item.category || undefined,
+              section: item.section || undefined,
               image: item.image_url || undefined,
             };
           });
@@ -446,48 +448,28 @@ export default function CommunityPage() {
     </Card>
   );
 
-  /** 메인 영역 — 서브 탭별 콘텐츠 (7) */
+  /** 메인 영역 — 서브 탭별 콘텐츠 */
   const renderMainContent = () => {
-    if (communitySectionTab === "forum") {
-      const activeTabLabel = COMMUNITY_TAB_LABELS[communitySectionTab];
-
-      return (
-        <div className="rounded-lg p-6">
-          <div className="mx-auto max-w-xl space-y-3 py-12 text-center">
-            <h1 className="text-2xl font-semibold">
-              Community · {activeTabLabel}
-            </h1>
-            <p className="leading-relaxed text-muted-foreground">
-              {COMMUNITY_TAB_DESCRIPTIONS[communitySectionTab]}
-            </p>
-            <p className="text-sm text-muted-foreground/80">
-              이 섹션은 준비 중입니다.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
     const isGuestbookTab = communitySectionTab === "guestbook";
-    const writeHref = isGuestbookTab
-      ? "/community/write?tab=guestbook"
-      : "/community/write";
+    const activeTabLabel = COMMUNITY_TAB_LABELS[communitySectionTab];
 
     return (
       <div className="rounded-lg bg-card px-4 py-2">
-        {isAuthenticated && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          {COMMUNITY_TAB_DESCRIPTIONS[communitySectionTab]}
+        </p>
+
+        {isAuthenticated && isGuestbookTab && (
           <div className="mb-4 flex justify-end">
             <Button asChild>
-              <Link href={writeHref}>
-                {isGuestbookTab ? "방명록 작성" : "글쓰기"}
-              </Link>
+              <Link href="/community/write?tab=guestbook">방명록 작성</Link>
             </Button>
           </div>
         )}
 
-        {isGuestbookTab && (
-          <p className="mb-4 text-sm text-muted-foreground">
-            {COMMUNITY_TAB_DESCRIPTIONS.guestbook}
+        {!isGuestbookTab && (
+          <p className="mb-4 text-xs text-muted-foreground/80">
+            {activeTabLabel} 글은 운영진이 작성합니다. 댓글로 참여해 주세요.
           </p>
         )}
 

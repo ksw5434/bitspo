@@ -111,7 +111,14 @@ function CommunityWriteContent() {
     }
   };
 
-  // 로그인 확인 및 뉴스 데이터 로드
+  // Forum·Discussion은 관리자만 작성 — 공개 글쓰기는 방명록만 허용
+  useEffect(() => {
+    if (!isGuestbookMode) {
+      router.replace("/community?tab=guestbook");
+    }
+  }, [isGuestbookMode, router]);
+
+  // 로그인 확인
   useEffect(() => {
     const checkAuthAndLoadNews = async () => {
       const {
@@ -119,30 +126,20 @@ function CommunityWriteContent() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        // 비로그인 사용자는 로그인 페이지로 리다이렉트
-        const newsId = searchParams.get("newsId");
-        const redirectUrl = newsId
-          ? `/community/write?newsId=${newsId}`
-          : "/community/write";
-        router.push(`/auth/login?redirect=${encodeURIComponent(redirectUrl)}`);
+        router.push(
+          `/auth/login?redirect=${encodeURIComponent("/community/write?tab=guestbook")}`,
+        );
         return;
       }
 
       setIsAuthenticated(true);
       setCurrentUser(user);
-
-      // 인기 태그 로드
-      await loadPopularTags();
-
-      // 뉴스 ID가 쿼리 파라미터에 있는 경우 뉴스 데이터 로드
-      const newsId = searchParams.get("newsId");
-      if (newsId) {
-        await loadNewsData(newsId);
-      }
     };
 
-    checkAuthAndLoadNews();
-  }, [supabase, router, searchParams]);
+    if (isGuestbookMode) {
+      void checkAuthAndLoadNews();
+    }
+  }, [supabase, router, isGuestbookMode]);
 
   // 뉴스 데이터 로드 함수
   const loadNewsData = async (newsId: string) => {
@@ -392,18 +389,33 @@ function CommunityWriteContent() {
         ? null
         : formData.image_url?.trim() || null;
 
-      const { data, error } = await supabase
+      const insertBase = {
+        user_id: currentUser.id,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        category: GUESTBOOK_CATEGORY,
+        tags: [] as string[],
+        image_url: imageUrl,
+        section: "guestbook" as const,
+      };
+
+      let { data, error } = await supabase
         .from("communities")
-        .insert({
-          user_id: currentUser.id,
-          title: formData.title.trim(),
-          content: formData.content.trim(),
-          category: isGuestbookMode ? GUESTBOOK_CATEGORY : formData.category || null,
-          tags: isGuestbookMode ? [] : formData.tags.length > 0 ? formData.tags : [],
-          image_url: imageUrl,
-        })
+        .insert(insertBase)
         .select()
         .single();
+
+      // section 컬럼 미적용 DB 대비
+      if (error?.message?.includes("section")) {
+        const { section: _s, ...withoutSection } = insertBase;
+        const retry = await supabase
+          .from("communities")
+          .insert(withoutSection)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error("게시글 작성 오류:", error);

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/app/_components/ui/button";
 import { AdminNewsNav } from "./admin-news-nav";
 import { AdminBetNav } from "./admin-bet-nav";
+import { AdminCommunityNav } from "./admin-community-nav";
 import { AdminCryptoNav } from "./admin-crypto-nav";
 import { AdminSportsNav } from "./admin-sports-nav";
 import {
@@ -154,6 +155,9 @@ function AdminSidebar() {
         </Suspense>
         <Suspense fallback={null}>
           <AdminBetNav />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AdminCommunityNav />
         </Suspense>
       </nav>
 

@@ -1,3 +1,5 @@
+import { resolvePostSection } from "@/lib/community-sections";
+
 /** /community 페이지 서브 탭 타입 */
 export type CommunityTab = "forum" | "discussion" | "guestbook";
 
@@ -18,8 +20,9 @@ export const GUESTBOOK_CATEGORY = "Guestbook";
 
 /** 탭별 안내 문구 (목업) */
 export const COMMUNITY_TAB_DESCRIPTIONS: Record<CommunityTab, string> = {
-  forum: "포럼 기능을 곧 제공할 예정입니다.",
-  discussion: "자유롭게 글을 작성하고 암호화폐 관련 정보를 공유하세요.",
+  forum: "운영진이 작성한 공지·포럼 글입니다. 회원은 댓글로 참여할 수 있습니다.",
+  discussion:
+    "운영진이 작성한 토론 글입니다. 회원은 댓글로 의견을 나눌 수 있습니다.",
   guestbook: "짧은 메시지를 남기는 방명록 공간입니다. (텍스트만 작성 가능)",
 };
 
@@ -30,17 +33,11 @@ export function isGuestbookPost(category: string | null | undefined): boolean {
   return category === GUESTBOOK_CATEGORY;
 }
 
-/** 탭별 게시글 필터 */
+/** 탭별 게시글 필터 (section 우선, 없으면 category로 추론) */
 export function filterPostsByCommunityTab<
-  T extends { category?: string | null },
+  T extends { section?: string | null; category?: string | null },
 >(posts: T[], tab: CommunityTab): T[] {
-  if (tab === "guestbook") {
-    return posts.filter((post) => isGuestbookPost(post.category));
-  }
-  if (tab === "discussion") {
-    return posts.filter((post) => !isGuestbookPost(post.category));
-  }
-  return [];
+  return posts.filter((post) => resolvePostSection(post) === tab);
 }
 
 /** URL 쿼리에서 Community 탭 값 파싱 (기본값: Discussion) */

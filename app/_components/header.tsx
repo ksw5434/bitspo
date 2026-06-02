@@ -19,11 +19,7 @@ export default function Header() {
   const navRef = useRef<HTMLElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  // 관리자 페이지에서는 전용 레이아웃을 쓰기 때문에 공용 헤더를 숨김
-  if (pathname?.startsWith("/admin")) {
-    return null;
-  }
+  const isAdminRoute = pathname?.startsWith("/admin") ?? false;
 
   const supabase = useMemo(() => {
     if (typeof window === "undefined") {
@@ -43,6 +39,8 @@ export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
+    if (isAdminRoute) return;
+
     setMounted(true);
 
     const navElement = navRef.current;
@@ -61,9 +59,14 @@ export default function Header() {
     resizeObserver.observe(navElement);
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isAdminRoute]);
 
   useEffect(() => {
+    if (isAdminRoute) {
+      setIsLoading(false);
+      return;
+    }
+
     if (!supabase) {
       setIsLoading(false);
       return;
@@ -135,7 +138,7 @@ export default function Header() {
     checkUser();
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, isAdminRoute]);
 
   const handleLogout = async () => {
     if (!supabase) return;
@@ -170,6 +173,11 @@ export default function Header() {
     }
     return "";
   };
+
+  // 관리자 페이지는 AdminShell 사용 — hooks는 항상 동일하게 호출한 뒤 렌더만 생략
+  if (isAdminRoute) {
+    return null;
+  }
 
   return (
     <>

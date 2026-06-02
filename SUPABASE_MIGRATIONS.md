@@ -55,6 +55,7 @@ npm run db:migration:new -- add_my_table
 | `20250602130000_news_is_pick.sql` | `news.is_pick` (Sports 노출 플래그) |
 | `20250602140000_crypto_categories.sql` | `crypto_categories`, `news_crypto_categories`, `news.publish_to_crypto`, RLS |
 | `20250602150000_bet_categories.sql` | `bet_categories`, `news_bet_categories`, `news.publish_to_bet`, RLS |
+| `20250602160000_communities_section.sql` | `communities.section` (forum / discussion / guestbook), 인덱스 |
 
 ## 문제 해결
 
